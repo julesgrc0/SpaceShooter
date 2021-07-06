@@ -4,30 +4,15 @@
 
 #include <pthread.h>
 #include <SDL2/SDL.h>
-#include "src/collision.h"
-
-typedef enum MouseCode
-{
-    RIGHT,
-    LEFT,
-    WHELL_UP,
-    WHELL_DOWN,
-    MOVE,
-    NONE
-} MouseCode;
-
-typedef struct UpdateInfo
-{
-    SDL_Keycode key;
-    Vector2 mouse_position;
-    MouseCode mouse;
-} UpdateInfo;
+#include "src/util.h"
+#include "src/texture.h"
 
 void update(float, UpdateInfo);
 void draw(SDL_Renderer *);
 
 int main(int argc, char **argv)
 {
+
     if (SDL_Init(SDL_INIT_VIDEO))
     {
         return 1;
@@ -41,6 +26,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    char *paths[2] = {"./assets/player/playerShip1_blue.png", "./assets/player/playerShip1_blue.png"};
+    size_t len = sizeof(paths) / sizeof(char *);
+
+    SDL_Texture **textures = (SDL_Texture **)malloc(sizeof(SDL_Texture *) * len);
+    memcpy(textures, load_texture(renderer, paths), len);
+    
+    Animation animation = create_animation(textures, (Vector2){0, 0}, (Size){50, 50}, 1, 40.0f, true);
     /*
     pthread_t update_thread;
     pthread_create(&update_thread, NULL, (void *)update, (void *)current_data);
@@ -62,11 +54,12 @@ int main(int argc, char **argv)
         frames++;
         if ((counter_current - counter_start) >= 1)
         {
-            printf("\rFPS: %d", frames);
-            fflush(stdout);
+            //printf("\rFPS: %d", frames);
+            //fflush(stdout);
             frames = 0;
             counter_start = counter_current;
         }
+
         current_time = SDL_GetTicks();
         deltatime = current_time - last_time;
         deltatime /= 100;
@@ -102,10 +95,9 @@ int main(int argc, char **argv)
                 {
                     updateInfo.mouse = WHELL_DOWN;
                 }
-
                 break;
             }
-            if (updateInfo.mouse != WHELL_UP && updateInfo.mouse != WHELL_DOWN)
+            if (updateInfo.mouse != WHELL_UP && updateInfo.mouse != WHELL_DOWN && updateInfo.mouse != NONE)
             {
                 updateInfo.mouse_position.x = event.button.x;
                 updateInfo.mouse_position.y = event.button.y;
@@ -113,9 +105,12 @@ int main(int argc, char **argv)
         }
 
         update(deltatime, updateInfo);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+        //SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
-        draw(renderer);
+        //draw(renderer);
+        play_animation(renderer, animation, deltatime);
+        //draw_from_path(renderer, paths[0], (Vector2){0, 0}, (Size){0, 0});
+
         SDL_RenderPresent(renderer);
 
         /*CPU fix*/
@@ -124,6 +119,8 @@ int main(int argc, char **argv)
     }
 
     //pthread_join(update_thread, NULL);
+    free(textures);
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

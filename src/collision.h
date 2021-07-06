@@ -2,16 +2,7 @@
 #define _COLLISION_
 
 #include <stdbool.h>
-
-typedef struct Vector2
-{
-    float x, y;
-} Vector2;
-
-typedef struct Size
-{
-    int width, height;
-} Size;
+#include "util.h"
 
 bool AABB(Vector2 p1, Size s1, Vector2 p2, Size s2);
 
