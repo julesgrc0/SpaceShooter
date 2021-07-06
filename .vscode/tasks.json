@@ -11,6 +11,7 @@
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}",
 				"-lSDL2",
+				"-lSDL2_image",
 				"-lpthread",
 				"-lGL"
 			],

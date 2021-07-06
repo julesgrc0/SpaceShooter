@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <SDL2/SDL.h>
 
-
 char *to_string(int);
 
 typedef struct Vector2
@@ -25,6 +24,16 @@ typedef enum MouseCode
     MOVE,
     NONE
 } MouseCode;
+
+size_t get_length(void **arr)
+{
+    size_t i = 0;
+    while (arr[i])
+    {
+        i++;
+    }
+    return i;
+}
 
 typedef struct UpdateInfo
 {

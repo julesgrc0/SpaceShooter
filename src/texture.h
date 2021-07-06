@@ -21,8 +21,9 @@ typedef struct Animation
 
 int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size size);
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size);
-bool play_animation(SDL_Renderer *render, Animation anim, float deltatime);
+bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime);
 Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop);
+SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length);
 
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size)
 {
@@ -52,19 +53,21 @@ int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size siz
         return 1;
     }
     SDL_FreeSurface(image);
-    return draw_from_texture(render, texture, pos, size);
+    int res = draw_from_texture(render, texture, pos, size);
+    SDL_DestroyTexture(texture);
+
+    return res;
 }
 
-SDL_Texture **load_texture(SDL_Renderer *render, char **paths)
+SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
 {
-    size_t len = sizeof(paths) / sizeof(char *);
     SDL_Texture **textures;
-    textures = (SDL_Texture **)malloc(sizeof(SDL_Texture *) * len);
-    if (!textures && !len)
+    textures = (SDL_Texture **)malloc(sizeof(SDL_Texture *) * length);
+    if (!textures && !length)
     {
         return textures;
     }
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < length; i++)
     {
         SDL_Surface *image = SDL_LoadBMP(paths[i]);
         if (image)
@@ -73,17 +76,19 @@ SDL_Texture **load_texture(SDL_Renderer *render, char **paths)
             SDL_FreeSurface(image);
         }
     }
-
     return textures;
 }
 
 Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop)
 {
+    size_t len = get_length((void**)textures);
     Animation animation;
     animation.frame_index = 0;
-    animation.frames_length = (sizeof(SDL_Texture *) / sizeof(textures));
+    animation.frames_length = len;
+
     animation.textures = malloc(sizeof(SDL_Texture *) * animation.frames_length);
-    memcpy(animation.textures, textures, animation.frames_length);
+    memcpy(animation.textures, textures, len * sizeof(SDL_Texture *));
+
     animation.size = size;
     animation.position = position;
     animation.speed = speed;
@@ -93,29 +98,27 @@ Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, 
     return animation;
 }
 
-bool play_animation(SDL_Renderer *render, Animation anim, float deltatime)
+bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime)
 {
-    if (anim.time >= anim.stop)
+    anim->time += deltatime * anim->speed;
+    if (anim->time >= anim->stop)
     {
-        return false;
+        anim->frame_index++;
+        anim->time = 0;
     }
-    anim.time += deltatime * anim.speed;
-    if (anim.frame_index >= anim.frames_length)
+
+    if (anim->frame_index >= anim->frames_length)
     {
-        if (!anim.loop)
+        if (!anim->loop)
         {
             return false;
         }
-        anim.frame_index = 0;
-    }
-    anim.frame_index++;
-
-    if (draw_from_texture(render, anim.textures[anim.frame_index], anim.position, anim.size))
-    {
-        return false;
+        anim->frame_index = 0;
     }
 
-    return true;
+    int res = draw_from_texture(render, anim->textures[anim->frame_index], anim->position, anim->size);
+
+    return (bool)res;
 }
 
 #endif

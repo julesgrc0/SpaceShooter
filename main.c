@@ -26,13 +26,16 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    char *paths[2] = {"./assets/player/playerShip1_blue.png", "./assets/player/playerShip1_blue.png"};
+    char *paths[4] = {"./out/assets/player/player-0.bmp", "./out/assets/player/player-1.bmp", "./out/assets/player/player-2.bmp", "./out/assets/player/player-3.bmp"};
     size_t len = sizeof(paths) / sizeof(char *);
+    size_t alloc_size = sizeof(SDL_Texture *) * len;
 
-    SDL_Texture **textures = (SDL_Texture **)malloc(sizeof(SDL_Texture *) * len);
-    memcpy(textures, load_texture(renderer, paths), len);
-    
-    Animation animation = create_animation(textures, (Vector2){0, 0}, (Size){50, 50}, 1, 40.0f, true);
+    SDL_Texture **textures = (SDL_Texture **)malloc(alloc_size);
+
+    memcpy(textures, load_texture(renderer, paths,4), alloc_size);
+
+    Animation animation = create_animation(textures, (Vector2){0, 0}, (Size){50, 50}, 1, 4.0f, true);
+
     /*
     pthread_t update_thread;
     pthread_create(&update_thread, NULL, (void *)update, (void *)current_data);
@@ -108,9 +111,7 @@ int main(int argc, char **argv)
         //SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
         //draw(renderer);
-        play_animation(renderer, animation, deltatime);
-        //draw_from_path(renderer, paths[0], (Vector2){0, 0}, (Size){0, 0});
-
+        play_animation(renderer, &animation, deltatime);
         SDL_RenderPresent(renderer);
 
         /*CPU fix*/
@@ -119,7 +120,7 @@ int main(int argc, char **argv)
     }
 
     //pthread_join(update_thread, NULL);
-    free(textures);
+    //free(textures);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
