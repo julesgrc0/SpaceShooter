@@ -22,7 +22,7 @@ typedef struct Animation
 int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size size);
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size);
 bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime);
-Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop);
+Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop, size_t len);
 SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length);
 
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size)
@@ -34,6 +34,21 @@ int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, S
         return 1;
     }
     if (SDL_RenderCopy(render, texture, NULL, &rect))
+    {
+        return 1;
+    }
+    return 0;
+}
+
+int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size, float angle, SDL_RendererFlip flip)
+{
+    SDL_Rect rect = {pos.x, pos.y, size.width, size.height};
+
+    if (SDL_QueryTexture(texture, NULL, NULL, &rect.w, &rect.h))
+    {
+        return 1;
+    }
+    if (SDL_RenderCopyEx(render, texture, NULL, &rect, angle, NULL, flip))
     {
         return 1;
     }
@@ -79,9 +94,8 @@ SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
     return textures;
 }
 
-Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop)
+Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop, size_t len)
 {
-    size_t len = get_length((void**)textures);
     Animation animation;
     animation.frame_index = 0;
     animation.frames_length = len;
@@ -106,7 +120,6 @@ bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime)
         anim->frame_index++;
         anim->time = 0;
     }
-
     if (anim->frame_index >= anim->frames_length)
     {
         if (!anim->loop)

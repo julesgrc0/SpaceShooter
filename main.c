@@ -26,15 +26,15 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    char *paths[4] = {"./out/assets/player/player-0.bmp", "./out/assets/player/player-1.bmp", "./out/assets/player/player-2.bmp", "./out/assets/player/player-3.bmp"};
-    size_t len = sizeof(paths) / sizeof(char *);
+    char *paths[4] = { "./out/assets/player/player-0.bmp", "./out/assets/player/player-1.bmp", "./out/assets/player/player-2.bmp", "./out/assets/player/player-3.bmp"};
+    size_t len = 4; //sizeof(paths) / sizeof(char *);
     size_t alloc_size = sizeof(SDL_Texture *) * len;
 
     SDL_Texture **textures = (SDL_Texture **)malloc(alloc_size);
 
-    memcpy(textures, load_texture(renderer, paths,4), alloc_size);
+    memcpy(textures, load_texture(renderer, paths, len), alloc_size);
 
-    Animation animation = create_animation(textures, (Vector2){0, 0}, (Size){50, 50}, 1, 4.0f, true);
+    Animation animation = create_animation(textures, (Vector2){0, 0}, (Size){50, 50}, 1, 4.0f, true, len);
 
     /*
     pthread_t update_thread;
@@ -128,15 +128,13 @@ int main(int argc, char **argv)
     return 0;
 }
 
-float x = 0;
 
 void draw(SDL_Renderer *renderer)
 {
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-    SDL_RenderDrawLine(renderer, x, 10, x + 10, 10);
+   
 }
 
 void update(float deltatime, UpdateInfo info)
 {
-    x += deltatime * 2;
+
 }

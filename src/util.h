@@ -25,16 +25,6 @@ typedef enum MouseCode
     NONE
 } MouseCode;
 
-size_t get_length(void **arr)
-{
-    size_t i = 0;
-    while (arr[i])
-    {
-        i++;
-    }
-    return i;
-}
-
 typedef struct UpdateInfo
 {
     SDL_Keycode key;

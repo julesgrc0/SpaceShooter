@@ -4,29 +4,45 @@
 #include "util.h"
 #include <SDL2/SDL.h>
 
-typedef enum EnityType
+typedef struct Enemy
 {
-    ENEMY,
-    PLAYER,
-    METEOR
-} EntityType;
-
-typedef struct Entity
-{
-    Vector2 position;
-    Size size;
+    int life;
     SDL_Texture *texture;
-    EnityType type;
-} Entity;
+    Size size;
+    Vector2 position;
+    Vector2 *bullet;
+} Enemy;
 
-void player_update(Entity enemy, float deltatime, UpdateInfo info);
-void enemy_update(Entity enemy, float deltatime);
+typedef struct Player
+{
+    int life;
+    SDL_Texture *texture;
+    Size size;
+    Vector2 position;
+    Vector2 *bullet;
+} Player;
 
-void enemy_update(Entity *enemy, float deltatime)
+typedef struct Meteor
+{
+    SDL_Texture *texture;
+    Size size;
+    Vector2 position;
+} Meteor;
+
+void player_update(Player enemy, float deltatime, UpdateInfo info);
+void enemy_update(Enemy enemy, float deltatime);
+void meteor_update(Meteor met, float deltatime);
+
+void meteor_update(Meteor met, float deltatime)
+{
+
+}
+
+void enemy_update(Enemy *enemy, float deltatime)
 {
 }
 
-void player_update(Entity *player, float deltatime, UpdateInfo info)
+void player_update(Player *player, float deltatime, UpdateInfo info)
 {
     Vector2 future_position = player->position;
     float speed = deltatime * 2;
@@ -42,8 +58,6 @@ void player_update(Entity *player, float deltatime, UpdateInfo info)
         shoot = true;
         break;
     }
-
-    
 }
 
 #endif
