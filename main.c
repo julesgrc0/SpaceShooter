@@ -7,8 +7,20 @@
 #include "src/util.h"
 #include "src/texture.h"
 
+#define WINDOW_SIZE 600
+
+typedef struct GameData
+{
+    Enemy *enemies;
+    Player player;
+    Meteor *meteor;
+
+    size_t meteor_length;
+    size_t enemies_length;
+} GameData;
 void update(float, UpdateInfo);
 void draw(SDL_Renderer *);
+void init_game(GameData *data, SDL_Renderer *render);
 
 int main(int argc, char **argv)
 {
@@ -21,20 +33,35 @@ int main(int argc, char **argv)
     SDL_Window *window;
     SDL_Renderer *renderer;
 
-    if (SDL_CreateWindowAndRenderer(500, 500, 0, &window, &renderer) != 0)
+    if (SDL_CreateWindowAndRenderer(WINDOW_SIZE, WINDOW_SIZE, 0, &window, &renderer) != 0)
     {
         return 1;
     }
 
-    char *paths[4] = { "./out/assets/player/player-0.bmp", "./out/assets/player/player-1.bmp", "./out/assets/player/player-2.bmp", "./out/assets/player/player-3.bmp"};
-    size_t len = 4; //sizeof(paths) / sizeof(char *);
+    GameData data;
+    init_game(&data, renderer);
+
+    char *enemiesPath[4] = {};
+    size_t len = 4;
     size_t alloc_size = sizeof(SDL_Texture *) * len;
 
-    SDL_Texture **textures = (SDL_Texture **)malloc(alloc_size);
+    SDL_Texture **enemiesTextures = (SDL_Texture **)malloc(alloc_size);
+    memcpy(enemiesTextures, load_texture(renderer, enemiesPath, len), alloc_size);
 
-    memcpy(textures, load_texture(renderer, paths, len), alloc_size);
-
-    Animation animation = create_animation(textures, (Vector2){0, 0}, (Size){50, 50}, 1, 4.0f, true, len);
+    char *uiPaths[10] = {"./out/assets/ui/ui-0.bmp",
+                         "./out/assets/ui/ui-1.bmp",
+                         "./out/assets/ui/ui-2.bmp",
+                         "./out/assets/ui/ui-3.bmp",
+                         "./out/assets/ui/ui-4.bmp",
+                         "./out/assets/ui/ui-5.bmp",
+                         "./out/assets/ui/ui-6.bmp",
+                         "./out/assets/ui/ui-7.bmp",
+                         "./out/assets/ui/ui-8.bmp"
+                         "./out/assets/ui/ui-9.bmp"};
+    len = 10;
+    alloc_size = sizeof(SDL_Texture *) * len;
+    SDL_Texture **uiTextures = (SDL_Texture **)malloc(alloc_size);
+    memcpy(uiTextures, load_texture(renderer, enemiesPath, len), alloc_size);
 
     /*
     pthread_t update_thread;
@@ -108,10 +135,8 @@ int main(int argc, char **argv)
         }
 
         update(deltatime, updateInfo);
-        //SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
         //draw(renderer);
-        play_animation(renderer, &animation, deltatime);
         SDL_RenderPresent(renderer);
 
         /*CPU fix*/
@@ -119,22 +144,61 @@ int main(int argc, char **argv)
         last_time = current_time;
     }
 
-    //pthread_join(update_thread, NULL);
-    //free(textures);
-
+    free(enemiesTextures);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
 }
 
-
 void draw(SDL_Renderer *renderer)
 {
-   
 }
 
 void update(float deltatime, UpdateInfo info)
 {
+}
 
+int int_length(int a)
+{
+    int length = 0;
+    while (a > 0)
+    {
+        a /= 10;
+        length++;
+    }
+    return length;
+}
+
+void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position, Size size)
+{
+    int length = int_length(n);
+    char *n_str = malloc(sizeof(char) * length);
+    sprintf(n_str, "%d", n);
+    for (size_t i = 0; i < length; i++)
+    {
+        draw_from_texture(render, ui[atoi(n_str[i])], (Vector2){position.x + (i * size.width), position.y}, size);
+    }
+}
+
+void init_game(GameData *data, SDL_Renderer *render)
+{
+    Player p;
+    SDL_Surface *image = SDL_LoadBMP("./out/assets/player/player-0.bmp");
+    if (image)
+    {
+        p.texture = SDL_CreateTextureFromSurface(render, image);
+        SDL_FreeSurface(image);
+    }
+    p.size.width = 100;
+    p.size.height = 100;
+    p.speed = 2;
+    p.life = 100;
+    p.bullet = malloc(sizeof(Laser) * p.bullet_len);
+    p.position.x = WINDOW_SIZE / 2 - p.size.height;
+    p.position.y = WINDOW_SIZE - p.size.height;
+
+    data->player = p;
+    data->enemies = malloc(sizeof(Enemy) * data->enemies_length);
+    data->meteor = malloc(sizeof(Meteor) * data->meteor_length);
 }

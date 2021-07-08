@@ -38,6 +38,7 @@ typedef struct Player
     Size size;
     Vector2 position;
     Laser *bullet;
+    size_t bullet_len;
 } Player;
 
 typedef struct Meteor
@@ -50,23 +51,20 @@ typedef struct Meteor
 } Meteor;
 
 void player_update(Player *enemy, float deltatime, UpdateInfo info);
-void enemy_update(Enemy **enemy, float deltatime);
-void meteor_update(Meteor **met, float deltatime);
-void laser_update(Laser **laser, float deltatime);
+void enemy_update(Enemy **enemy, size_t len, float deltatime);
+void meteor_update(Meteor **met, size_t len, float deltatime);
+void laser_update(Laser **laser, size_t len, float deltatime);
 
-void meteor_update(Meteor **met, float deltatime)
+void meteor_update(Meteor **met, size_t len, float deltatime)
 {
-    size_t len = sizeof(met) / sizeof(Meteor);
-
     for (size_t i = 0; i < len; i++)
     {
         vector_angle(&met[i]->position, met[i]->angle, met[i]->speed * deltatime);
     }
 }
 
-void enemy_update(Enemy **enemy, float deltatime)
+void enemy_update(Enemy **enemy, size_t len, float deltatime)
 {
-    size_t len = sizeof(enemy) / sizeof(Enemy);
     for (int i = 0; i < len; i++)
     {
         enemy[i]->position.y + enemy[i]->speed *deltatime;
@@ -107,10 +105,8 @@ void player_update(Player *player, float deltatime, UpdateInfo info)
     }
 }
 
-void laser_update(Laser **laser, float deltatime)
+void laser_update(Laser **laser, size_t len, float deltatime)
 {
-    size_t len = sizeof(laser) / sizeof(Laser);
-
     for (size_t i = 0; i < len; i++)
     {
         vector_angle(&laser[i]->position, laser[i]->angle, laser[i]->speed * deltatime);

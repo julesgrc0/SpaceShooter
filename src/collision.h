@@ -27,7 +27,7 @@ void game_collision(Player *player, Meteor **meteor, Enemy **enemies)
     {
         if (AABB(player->position, player->size, meteor[i]->position, meteor[i]->size))
         {
-            remove_element(meteor, i, meteor_len);
+            remove_element((void**)meteor, i, meteor_len);
             i--;
             meteor_len--;
 
@@ -43,7 +43,7 @@ void game_collision(Player *player, Meteor **meteor, Enemy **enemies)
         {
             if (AABB(player->position, player->size, enemies[i]->bullet[k].position, enemies[i]->bullet[k].size))
             {
-                remove_element(enemies[i]->bullet, k, laser_len);
+                remove_element((void**)enemies[i]->bullet, k, laser_len);
                 k--;
                 laser_len--;
             }

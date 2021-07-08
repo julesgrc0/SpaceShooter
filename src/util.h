@@ -1,10 +1,10 @@
 #ifndef _UTIL_
 #define _UTIL_
+
 #include <stdio.h>
 #include <math.h>
 #include <SDL2/SDL.h>
 #define PI 3.14
-char *to_string(int);
 
 typedef struct Vector2
 {
@@ -33,6 +33,10 @@ typedef struct UpdateInfo
     MouseCode mouse;
 } UpdateInfo;
 
+char *to_string(int);
+void vector_angle(Vector2 *position, float angle, float distance);
+void remove_element(void **array, int index, size_t array_length);
+
 void remove_element(void **array, int index, size_t array_length)
 {
     int i;
@@ -45,8 +49,8 @@ void remove_element(void **array, int index, size_t array_length)
 void vector_angle(Vector2 *position, float angle, float distance)
 {
     angle *= PI / 180;
-    position->x += distance * cos(angle);
-    position->y += distance * sin(angle);
+   // position->x += distance * cos((double)angle);
+   // position->y += distance * sin((double)angle);
 }
 
 char *to_string(int a)
