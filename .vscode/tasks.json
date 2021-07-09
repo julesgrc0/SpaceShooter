@@ -13,7 +13,8 @@
 				"-lSDL2",
 				"-lSDL2_image",
 				"-lpthread",
-				"-lGL"
+				"-Wunused-result",
+				"-Wint-to-pointer-cast"
 			],
 			"options": {
 				"cwd": "${fileDirname}"

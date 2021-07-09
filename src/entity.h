@@ -54,6 +54,7 @@ void player_update(Player *enemy, float deltatime, UpdateInfo info);
 void enemy_update(Enemy **enemy, size_t len, float deltatime);
 void meteor_update(Meteor **met, size_t len, float deltatime);
 void laser_update(Laser **laser, size_t len, float deltatime);
+void laser_add(Laser **list, Laser laser, size_t *length);
 
 void meteor_update(Meteor **met, size_t len, float deltatime)
 {
@@ -113,4 +114,10 @@ void laser_update(Laser **laser, size_t len, float deltatime)
     }
 }
 
+void laser_add(Laser **list, Laser laser, size_t *length)
+{
+    (*length)++;
+    (*list) = realloc((*list), (*length) * sizeof(Laser *));
+    (*list)[(*length) - 1] = laser;
+}
 #endif

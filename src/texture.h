@@ -4,7 +4,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <stdbool.h>
+#include <dirent.h>
 #include "collision.h"
+
+#define DIRECTORY 4
 
 typedef struct Animation
 {
@@ -24,6 +27,7 @@ int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, S
 bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime);
 Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop, size_t len);
 SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length);
+bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_Renderer *render);
 
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size)
 {
@@ -74,11 +78,45 @@ int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size siz
     return res;
 }
 
+bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_Renderer *render)
+{
+    DIR *rep = opendir(dirpath);
+    if (!rep)
+    {
+        return false;
+    }
+    struct dirent *ent = NULL;
+
+    char **tmpPaths = NULL;
+    size_t tmpSize = 0;
+    while ((ent = readdir(rep)) != NULL)
+    {
+        if (ent->d_type != DIRECTORY)
+        {
+            size_t path = (sizeof(ent->d_name) + sizeof(dirpath) + 1);
+            char *strpath = malloc(path * sizeof(char));
+            sprintf(strpath, "%s/%s", dirpath, ent->d_name);
+
+            tmpSize++;
+            tmpPaths = realloc(tmpPaths, path * sizeof(char *) * tmpSize);
+            tmpPaths[tmpSize - 1] = malloc(path * sizeof(char));
+            memcpy(tmpPaths[tmpSize - 1], strpath, path);
+
+            free(strpath);
+        }
+    }
+
+    (*textures) = malloc(tmpSize * sizeof(SDL_Texture *));
+    memcpy((*textures), load_texture(render, tmpPaths, tmpSize), tmpSize * sizeof(SDL_Texture *));
+
+    free(tmpPaths);
+    return true;
+}
+
 SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
 {
-    SDL_Texture **textures;
-    textures = (SDL_Texture **)malloc(sizeof(SDL_Texture *) * length);
-    if (!textures && !length)
+    SDL_Texture **textures = malloc(sizeof(SDL_Texture *) * length);
+    if (!textures)
     {
         return textures;
     }

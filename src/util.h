@@ -33,6 +33,7 @@ typedef struct UpdateInfo
     MouseCode mouse;
 } UpdateInfo;
 
+int int_length(int a);
 char *to_string(int);
 void vector_angle(Vector2 *position, float angle, float distance);
 void remove_element(void **array, int index, size_t array_length);
@@ -49,8 +50,19 @@ void remove_element(void **array, int index, size_t array_length)
 void vector_angle(Vector2 *position, float angle, float distance)
 {
     angle *= PI / 180;
-   // position->x += distance * cos((double)angle);
-   // position->y += distance * sin((double)angle);
+    // position->x += distance * cos((double)angle);
+    // position->y += distance * sin((double)angle);
+}
+
+int int_length(int a)
+{
+    int length = 0;
+    while (a > 0)
+    {
+        a /= 10;
+        length++;
+    }
+    return length;
 }
 
 char *to_string(int a)

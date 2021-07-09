@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <dirent.h>
 
 #include <pthread.h>
 #include <SDL2/SDL.h>
@@ -18,13 +19,23 @@ typedef struct GameData
     size_t meteor_length;
     size_t enemies_length;
 } GameData;
-void update(float, UpdateInfo);
-void draw(SDL_Renderer *);
-void init_game(GameData *data, SDL_Renderer *render);
+
+typedef struct GameTextures
+{
+    SDL_Texture **ui;
+    SDL_Texture **enemy;
+    SDL_Texture **player;
+    SDL_Texture **meteor;
+    SDL_Texture **laser;
+} GameTextures;
+
+void update(float, GameData *, GameTextures, UpdateInfo);
+void draw(SDL_Renderer *, GameData, GameTextures);
+void init_game(GameData *data, GameTextures textures, SDL_Renderer *render);
+void init_textures(GameTextures *, SDL_Renderer *render);
 
 int main(int argc, char **argv)
 {
-
     if (SDL_Init(SDL_INIT_VIDEO))
     {
         return 1;
@@ -39,30 +50,10 @@ int main(int argc, char **argv)
     }
 
     GameData data;
-    init_game(&data, renderer);
+    GameTextures textures;
 
-    char *enemiesPath[4] = {};
-    size_t len = 4;
-    size_t alloc_size = sizeof(SDL_Texture *) * len;
-
-    SDL_Texture **enemiesTextures = (SDL_Texture **)malloc(alloc_size);
-    memcpy(enemiesTextures, load_texture(renderer, enemiesPath, len), alloc_size);
-
-    char *uiPaths[10] = {"./out/assets/ui/ui-0.bmp",
-                         "./out/assets/ui/ui-1.bmp",
-                         "./out/assets/ui/ui-2.bmp",
-                         "./out/assets/ui/ui-3.bmp",
-                         "./out/assets/ui/ui-4.bmp",
-                         "./out/assets/ui/ui-5.bmp",
-                         "./out/assets/ui/ui-6.bmp",
-                         "./out/assets/ui/ui-7.bmp",
-                         "./out/assets/ui/ui-8.bmp"
-                         "./out/assets/ui/ui-9.bmp"};
-    len = 10;
-    alloc_size = sizeof(SDL_Texture *) * len;
-    SDL_Texture **uiTextures = (SDL_Texture **)malloc(alloc_size);
-    memcpy(uiTextures, load_texture(renderer, enemiesPath, len), alloc_size);
-
+    init_textures(&textures, renderer);
+    init_game(&data, textures, renderer);
     /*
     pthread_t update_thread;
     pthread_create(&update_thread, NULL, (void *)update, (void *)current_data);
@@ -134,9 +125,9 @@ int main(int argc, char **argv)
             }
         }
 
-        update(deltatime, updateInfo);
+        update(deltatime, &data, textures, updateInfo);
         SDL_RenderClear(renderer);
-        //draw(renderer);
+        draw(renderer, data, textures);
         SDL_RenderPresent(renderer);
 
         /*CPU fix*/
@@ -144,30 +135,28 @@ int main(int argc, char **argv)
         last_time = current_time;
     }
 
-    free(enemiesTextures);
+    free(textures.ui);
+    free(textures.player);
+    free(textures.enemy);
+    free(textures.meteor);
+    free(textures.laser);
+
+    free(data.enemies);
+    free(data.meteor);
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
 }
 
-void draw(SDL_Renderer *renderer)
+void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
+    draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
 }
 
-void update(float deltatime, UpdateInfo info)
+void update(float deltatime, GameData *data, GameTextures textures, UpdateInfo info)
 {
-}
-
-int int_length(int a)
-{
-    int length = 0;
-    while (a > 0)
-    {
-        a /= 10;
-        length++;
-    }
-    return length;
 }
 
 void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position, Size size)
@@ -181,24 +170,28 @@ void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position
     }
 }
 
-void init_game(GameData *data, SDL_Renderer *render)
+void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
 {
     Player p;
-    SDL_Surface *image = SDL_LoadBMP("./out/assets/player/player-0.bmp");
-    if (image)
-    {
-        p.texture = SDL_CreateTextureFromSurface(render, image);
-        SDL_FreeSurface(image);
-    }
+    p.texture = textures.player[3];
     p.size.width = 100;
     p.size.height = 100;
-    p.speed = 2;
+    p.speed = 2.0f;
     p.life = 100;
     p.bullet = malloc(sizeof(Laser) * p.bullet_len);
-    p.position.x = WINDOW_SIZE / 2 - p.size.height;
+    p.position.x = (WINDOW_SIZE - p.size.width) / 2;
     p.position.y = WINDOW_SIZE - p.size.height;
 
     data->player = p;
     data->enemies = malloc(sizeof(Enemy) * data->enemies_length);
     data->meteor = malloc(sizeof(Meteor) * data->meteor_length);
+}
+
+void init_textures(GameTextures *textures, SDL_Renderer *render)
+{
+    load_directory_textures("./out/assets/player", &textures->player, render);
+    load_directory_textures("./out/assets/enemies", &textures->enemy, render);
+    load_directory_textures("./out/assets/meteor", &textures->meteor, render);
+    load_directory_textures("./out/assets/laser", &textures->laser, render);
+    load_directory_textures("./out/assets/ui", &textures->ui, render);
 }
