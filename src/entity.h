@@ -8,21 +8,21 @@
 #define LASER_H 100
 #define LASER_SPEED 5
 #define ENEMY_SHOOT_INTERVAL 20
+#define PLAYER_SHOOT_TIME 10
 
 typedef struct Laser
 {
     Vector2 position;
     Size size;
-    SDL_Texture *texture;
-    float angle;
-    float speed;
+    double angle;
+    double speed;
 } Laser;
 
 typedef struct Enemy
 {
-    float waitShoot;
+    double waitShoot;
     int life;
-    float speed;
+    double speed;
     SDL_Texture *texture;
     Size size;
     Vector2 position;
@@ -33,7 +33,8 @@ typedef struct Enemy
 typedef struct Player
 {
     int life;
-    float speed;
+    double speed;
+    double time;
     SDL_Texture *texture;
     Size size;
     Vector2 position;
@@ -46,17 +47,17 @@ typedef struct Meteor
     SDL_Texture *texture;
     Size size;
     Vector2 position;
-    float angle;
-    float speed;
+    double angle;
+    double speed;
 } Meteor;
 
-void player_update(Player *enemy, float deltatime, UpdateInfo info);
-void enemy_update(Enemy **enemy, size_t len, float deltatime);
-void meteor_update(Meteor **met, size_t len, float deltatime);
-void laser_update(Laser **laser, size_t len, float deltatime);
+void player_update(Player *enemy, double deltatime, SDL_Keycode key);
+void enemy_update(Enemy **enemy, size_t len, double deltatime);
+void meteor_update(Meteor **met, size_t len, double deltatime);
+void laser_update(Laser **laser, size_t len, double deltatime);
 void laser_add(Laser **list, Laser laser, size_t *length);
 
-void meteor_update(Meteor **met, size_t len, float deltatime)
+void meteor_update(Meteor **met, size_t len, double deltatime)
 {
     for (size_t i = 0; i < len; i++)
     {
@@ -64,7 +65,7 @@ void meteor_update(Meteor **met, size_t len, float deltatime)
     }
 }
 
-void enemy_update(Enemy **enemy, size_t len, float deltatime)
+void enemy_update(Enemy **enemy, size_t len, double deltatime)
 {
     for (int i = 0; i < len; i++)
     {
@@ -74,39 +75,68 @@ void enemy_update(Enemy **enemy, size_t len, float deltatime)
         {
             enemy[i]->waitShoot = 0;
 
-            realloc(enemy[i]->bullet, enemy[i]->bullet_len * sizeof(Laser));
-            enemy[i]->bullet_len++;
-
             Laser laser;
             laser.speed = LASER_SPEED;
             laser.size = (Size){LASER_W, LASER_H};
             laser.position = enemy[i]->position;
             laser.angle = 90;
 
-            enemy[i]->bullet[enemy[i]->bullet_len - 1] = laser;
+            laser_add(&enemy[i]->bullet, laser, &enemy[i]->bullet_len);
         }
     }
 }
 
-void player_update(Player *player, float deltatime, UpdateInfo info)
+void player_update(Player *player, double deltatime, SDL_Keycode key)
 {
-    Vector2 future_position = player->position;
-    float speed = deltatime * 2;
+    double speed = deltatime * player->speed;
     bool shoot = false;
 
-    switch (info.key)
+    switch (key)
     {
     case SDLK_LEFT:
-        future_position.x -= speed;
+        player->position.x -= speed;
+        break;
     case SDLK_RIGHT:
-        future_position.y += speed;
+        player->position.x += speed;
+        break;
     case SDLK_SPACE:
         shoot = true;
         break;
     }
+
+    if (player->position.x < 0)
+    {
+        player->position.x = 0;
+    }
+    else if (player->position.x + player->size.width > WINDOW_SIZE)
+    {
+        player->position.x = WINDOW_SIZE - player->size.width;
+    }
+
+    /*
+        if (shoot && player->time > PLAYER_SHOOT_TIME)
+        {
+            player->time = 0;
+            Laser l;
+            l.angle = -180;
+            l.position = player->position;
+            l.size = (Size){LASER_W, LASER_H};
+            l.speed = LASER_SPEED;
+            laser_add(player->bullet, l, player->bullet_len);
+        }
+        else
+        {
+            player->time += deltatime;
+        }
+
+        if (player->bullet_len)
+        {
+            laser_update(player->bullet, player->bullet_len, deltatime);
+        }
+    */
 }
 
-void laser_update(Laser **laser, size_t len, float deltatime)
+void laser_update(Laser **laser, size_t len, double deltatime)
 {
     for (size_t i = 0; i < len; i++)
     {

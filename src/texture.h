@@ -11,8 +11,8 @@
 
 typedef struct Animation
 {
-    float stop;
-    float time;
+    double stop;
+    double time;
     bool loop;
     signed int speed;
     int frame_index;
@@ -24,10 +24,11 @@ typedef struct Animation
 
 int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size size);
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size);
-bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime);
-Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop, size_t len);
+bool play_animation(SDL_Renderer *render, Animation *anim, double deltatime);
+Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, double stop, bool loop, size_t len);
 SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length);
 bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_Renderer *render);
+static int compare_callback(const void *a, const void *b);
 
 int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size)
 {
@@ -44,7 +45,7 @@ int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, S
     return 0;
 }
 
-int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size, float angle, SDL_RendererFlip flip)
+int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size, double angle, SDL_RendererFlip flip)
 {
     SDL_Rect rect = {pos.x, pos.y, size.width, size.height};
 
@@ -106,11 +107,19 @@ bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_R
         }
     }
 
+    //qsort(tmpPaths, tmpSize, sizeof(const char *), compare_callback);
+
     (*textures) = malloc(tmpSize * sizeof(SDL_Texture *));
     memcpy((*textures), load_texture(render, tmpPaths, tmpSize), tmpSize * sizeof(SDL_Texture *));
 
     free(tmpPaths);
+    closedir(rep);
     return true;
+}
+
+static int compare_callback(const void *a, const void *b)
+{
+    return strcmp(*(const char**)a, *(const char**)b);
 }
 
 SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
@@ -132,7 +141,7 @@ SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
     return textures;
 }
 
-Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, float stop, bool loop, size_t len)
+Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, int speed, double stop, bool loop, size_t len)
 {
     Animation animation;
     animation.frame_index = 0;
@@ -150,7 +159,7 @@ Animation create_animation(SDL_Texture **textures, Vector2 position, Size size, 
     return animation;
 }
 
-bool play_animation(SDL_Renderer *render, Animation *anim, float deltatime)
+bool play_animation(SDL_Renderer *render, Animation *anim, double deltatime)
 {
     anim->time += deltatime * anim->speed;
     if (anim->time >= anim->stop)

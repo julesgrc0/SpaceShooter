@@ -5,10 +5,11 @@
 #include <math.h>
 #include <SDL2/SDL.h>
 #define PI 3.14
+#define WINDOW_SIZE 600
 
 typedef struct Vector2
 {
-    float x, y;
+    double x, y;
 } Vector2;
 
 typedef struct Size
@@ -35,7 +36,7 @@ typedef struct UpdateInfo
 
 int int_length(int a);
 char *to_string(int);
-void vector_angle(Vector2 *position, float angle, float distance);
+void vector_angle(Vector2 *position, double angle, double distance);
 void remove_element(void **array, int index, size_t array_length);
 
 void remove_element(void **array, int index, size_t array_length)
@@ -47,7 +48,7 @@ void remove_element(void **array, int index, size_t array_length)
     }
 }
 
-void vector_angle(Vector2 *position, float angle, float distance)
+void vector_angle(Vector2 *position, double angle, double distance)
 {
     angle *= PI / 180;
     // position->x += distance * cos((double)angle);
