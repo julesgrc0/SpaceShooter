@@ -125,7 +125,7 @@ int main(int argc, char **argv)
         SDL_RenderPresent(renderer);
 
         /*CPU fix*/
-        SDL_Delay(1000/FPS_MAX);
+        SDL_Delay(1000 / FPS_MAX);
         /**/
 
         last_time = current_time;
@@ -181,10 +181,14 @@ void update(void *n)
                 }
             }
 
-            if (ispress && current_key != SDLK_UNKNOWN)
+            if (ispress)
             {
                 player_update(&global_data.data.player, global_data.deltatime, event.key.keysym.sym);
             }
+        }
+        if (!ispress && !global_data.data.player.move_stop)
+        {
+            player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
         }
     }
 

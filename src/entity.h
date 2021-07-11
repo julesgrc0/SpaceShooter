@@ -9,6 +9,7 @@
 #define LASER_SPEED 5
 #define ENEMY_SHOOT_INTERVAL 20
 #define PLAYER_SHOOT_TIME 10
+#define PLAYER_MAX_STATE 5
 
 typedef struct Laser
 {
@@ -33,6 +34,9 @@ typedef struct Enemy
 typedef struct Player
 {
     int life;
+    int move_state;
+    bool left;
+    bool move_stop;
     double speed;
     double time;
     SDL_Texture *texture;
@@ -86,17 +90,53 @@ void enemy_update(Enemy **enemy, size_t len, double deltatime)
     }
 }
 
+void player_after_move(Player *player, bool direction, double deltatime)
+{
+    player->move_state++;
+
+    double move = deltatime * (player->speed / player->move_state);
+
+    if (direction)
+    {
+        player->position.x += move;
+    }
+    else
+    {
+        player->position.x -= move;
+    }
+
+    if (player->position.x < 0)
+    {
+        player->position.x = 0;
+    }
+    else if (player->position.x + player->size.width > WINDOW_SIZE)
+    {
+        player->position.x = WINDOW_SIZE - player->size.width;
+    }
+
+    if (player->move_state > PLAYER_MAX_STATE)
+    {
+        player->move_stop = true;
+        player->move_state = 1;
+    }
+}
+
 void player_update(Player *player, double deltatime, SDL_Keycode key)
 {
+
     double speed = deltatime * player->speed;
     bool shoot = false;
 
     switch (key)
     {
     case SDLK_LEFT:
+        player->move_stop = false;
+        player->left = true;
         player->position.x -= speed;
         break;
     case SDLK_RIGHT:
+        player->move_stop = false;
+        player->left = false;
         player->position.x += speed;
         break;
     case SDLK_SPACE:
