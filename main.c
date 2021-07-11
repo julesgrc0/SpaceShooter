@@ -9,7 +9,7 @@
 #include "src/util.h"
 #include "src/texture.h"
 
-#define FPS_MAX 200
+#define FPS_MAX 500
 
 typedef struct GameData
 {
@@ -149,6 +149,20 @@ int main(int argc, char **argv)
 void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
     draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
+    
+    for (size_t i = 0; i < data.player.bullet_len; i++)
+    {
+        double ang = data.player.bullet[i].angle;
+        //draw_from_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size);
+        if (data.player.bullet[i].angle > 0)
+        {
+            ang -= 90;
+        }else{
+            ang += 90;
+        }
+        rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size,ang, SDL_FLIP_NONE);
+    }
+    global_data.data.player.time += global_data.deltatime;
 }
 
 void update(void *n)
@@ -186,9 +200,15 @@ void update(void *n)
                 player_update(&global_data.data.player, global_data.deltatime, event.key.keysym.sym);
             }
         }
+
         if (!ispress && !global_data.data.player.move_stop)
         {
             player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
+        }
+
+        if (global_data.data.player.bullet_len)
+        {
+            laser_update(&global_data.data.player.bullet, global_data.data.player.bullet_len, global_data.deltatime);
         }
     }
 
@@ -217,6 +237,7 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     p.size.height = 100;
     p.speed = 300.0f;
     p.life = 100;
+    p.bullet_len = 0;
     p.bullet = malloc(sizeof(Laser) * p.bullet_len);
     p.position.x = (WINDOW_SIZE - p.size.width) / 2;
     p.position.y = WINDOW_SIZE - p.size.height;

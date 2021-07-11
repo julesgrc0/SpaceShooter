@@ -10,6 +10,7 @@
 				"${file}",
 				"-o",
 				"${fileDirname}/${fileBasenameNoExtension}",
+				"-lm",
 				"-lSDL2",
 				"-lSDL2_image",
 				"-lpthread",

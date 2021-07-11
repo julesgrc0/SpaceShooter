@@ -1,10 +1,9 @@
 #ifndef _UTIL_
 #define _UTIL_
-
-#include <stdio.h>
+#include <stdio.h> 
 #include <math.h>
 #include <SDL2/SDL.h>
-#define PI 3.14
+#define PI 3.1415926535897932384626433832
 #define WINDOW_SIZE 600
 
 typedef struct Vector2
@@ -51,8 +50,8 @@ void remove_element(void **array, int index, size_t array_length)
 void vector_angle(Vector2 *position, double angle, double distance)
 {
     angle *= PI / 180;
-    // position->x += distance * cos((double)angle);
-    // position->y += distance * sin((double)angle);
+    position->x += distance * cos((double)angle);
+    position->y += distance * sin((double)angle);
 }
 
 int int_length(int a)

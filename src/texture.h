@@ -53,7 +53,7 @@ int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 po
     {
         return 1;
     }
-    if (SDL_RenderCopyEx(render, texture, NULL, &rect, angle, NULL, flip))
+    if (SDL_RenderCopyEx(render, texture,  NULL, &rect, angle, NULL, flip))
     {
         return 1;
     }
