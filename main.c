@@ -9,7 +9,7 @@
 #include "src/util.h"
 #include "src/texture.h"
 
-#define FPS_MAX 500
+#define FPS_MAX 200
 
 typedef struct GameData
 {
@@ -18,7 +18,10 @@ typedef struct GameData
     Meteor *meteor;
 
     size_t meteor_length;
+    double meteor_time;
+
     size_t enemies_length;
+    double enemies_time;
 } GameData;
 
 typedef struct GameTextures
@@ -149,18 +152,19 @@ int main(int argc, char **argv)
 void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
     draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
-    
+
     for (size_t i = 0; i < data.player.bullet_len; i++)
     {
         double ang = data.player.bullet[i].angle;
-        //draw_from_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size);
         if (data.player.bullet[i].angle > 0)
         {
             ang -= 90;
-        }else{
+        }
+        else
+        {
             ang += 90;
         }
-        rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size,ang, SDL_FLIP_NONE);
+        rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, ang, SDL_FLIP_NONE);
     }
     global_data.data.player.time += global_data.deltatime;
 }
@@ -235,7 +239,7 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     p.texture = textures.player[3];
     p.size.width = 100;
     p.size.height = 100;
-    p.speed = 300.0f;
+    p.speed = 350.0f;
     p.life = 100;
     p.bullet_len = 0;
     p.bullet = malloc(sizeof(Laser) * p.bullet_len);

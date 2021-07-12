@@ -6,7 +6,9 @@
 
 #define LASER_W 10
 #define LASER_H 100
-#define LASER_SPEED 0.02
+#define LASER_SPEED 0.2
+#define ENEMY_TIME 5
+#define ENEMY_MAX 3
 #define ENEMY_SHOOT_INTERVAL 2
 #define PLAYER_SHOOT_TIME 2
 #define PLAYER_MAX_STATE 5
@@ -24,6 +26,7 @@ typedef struct Enemy
     double waitShoot;
     int life;
     double speed;
+    bool direction;
     SDL_Texture *texture;
     Size size;
     Vector2 position;
@@ -70,23 +73,65 @@ void meteor_update(Meteor **met, size_t len, double deltatime)
     }
 }
 
+void add_enemy_time(Enemy **list, size_t *length, double *time, double deltatime)
+{
+    (*time) += deltatime;
+    if ((*time) > ENEMY_TIME && (*length) < ENEMY_MAX)
+    {
+        Enemy enemy;
+        int pos = (rand() % (ENEMY_MAX + 1 - 1 + 1)) +1;
+        create_enemy(&enemy, pos);
+        (*time) = 0;
+        (*length)++;
+        (*list) = realloc((*list), (*length) * sizeof(Enemy));
+        (*list)[(*length) - 1] = enemy;
+    }
+}
+
+void create_enemy(Enemy *enemy, int pos)
+{
+    enemy->speed = 100;
+    enemy->direction = false;
+    enemy->life = 100;
+    enemy->bullet = malloc(sizeof(Laser) * enemy->bullet_len);
+    enemy->size = (Size){200, 200};
+    enemy->position.y = 0;
+    enemy->position.x = (WINDOW_SIZE / pos) - (enemy->size.width / 2);
+}
+
 void enemy_update(Enemy **enemy, size_t len, double deltatime)
 {
     for (int i = 0; i < len; i++)
     {
-        enemy[i]->position.y + enemy[i]->speed *deltatime;
+
+        if (enemy[i]->direction)
+        {
+            enemy[i]->position.x += enemy[i]->speed * deltatime;
+        }
+        else
+        {
+            enemy[i]->position.x -= enemy[i]->speed * deltatime;
+        }
+
+        if (enemy[i]->position.x < 0 || enemy[i]->position.x > WINDOW_SIZE)
+        {
+            enemy[i]->direction = !enemy[i]->direction;
+        }
+
         enemy[i]->waitShoot += deltatime;
         if (enemy[i]->waitShoot >= ENEMY_SHOOT_INTERVAL)
         {
             enemy[i]->waitShoot = 0;
 
-            Laser laser;
-            laser.speed = LASER_SPEED;
-            laser.size = (Size){LASER_W, LASER_H};
-            laser.position = enemy[i]->position;
-            laser.angle = 90;
+            Laser l;
+            l.angle = 90;
+            l.size = (Size){LASER_W, LASER_H};
+            l.position = (Vector2){enemy[i]->position.x + (enemy[i]->size.width / 2) + l.size.width, enemy[i]->position.y - enemy[i]->size.height / 2};
+            l.speed = LASER_SPEED;
 
-            laser_add(&enemy[i]->bullet, laser, &enemy[i]->bullet_len);
+            size_t len = enemy[i]->bullet_len;
+            laser_add(&enemy[i]->bullet, l, &enemy[i]->bullet_len);
+            enemy[i]->bullet_len = len;
         }
     }
 }
@@ -175,8 +220,8 @@ void laser_update(Laser **laser, size_t len, double deltatime)
     for (size_t i = 0; i < len; i++)
     {
         Laser l = (*laser)[i];
-        vector_angle(&l.position, l.angle,l.speed * deltatime);
-        (*laser)[i]=l;
+        vector_angle(&l.position, l.angle, l.speed * deltatime);
+        (*laser)[i] = l;
     }
 }
 

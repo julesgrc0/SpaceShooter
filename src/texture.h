@@ -53,7 +53,7 @@ int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 po
     {
         return 1;
     }
-    if (SDL_RenderCopyEx(render, texture,  NULL, &rect, angle, NULL, flip))
+    if (SDL_RenderCopyEx(render, texture, NULL, &rect, angle, NULL, flip))
     {
         return 1;
     }
@@ -107,6 +107,26 @@ bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_R
         }
     }
 
+    for (size_t i = 0; i < tmpSize; i++)
+    {
+        for (size_t j = 0; j < tmpSize - 1 - i; j++)
+        {
+            if (strcmp(tmpPaths[j], tmpPaths[j + 1]) > 0)
+            {
+                char *tmp = malloc(sizeof(tmpPaths[j]) * sizeof(char *));
+                strcpy(tmp, tmpPaths[j]);
+                strcpy(tmpPaths[j], tmpPaths[j + 1]);
+                strcpy(tmpPaths[j + 1], tmp);
+                free(tmp);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < tmpSize; i++)
+    {
+        printf("%s\n", tmpPaths[i]);
+    }
+
     //qsort(tmpPaths, tmpSize, sizeof(const char *), compare_callback);
 
     (*textures) = malloc(tmpSize * sizeof(SDL_Texture *));
@@ -119,7 +139,7 @@ bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_R
 
 static int compare_callback(const void *a, const void *b)
 {
-    return strcmp(*(const char**)a, *(const char**)b);
+    return strcmp(*(const char **)a, *(const char **)b);
 }
 
 SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
