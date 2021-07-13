@@ -9,6 +9,7 @@
 #include "src/util.h"
 #include "src/texture.h"
 
+#define BACKGROUND_INTERVAL 1000
 #define FPS_MAX 200
 
 typedef struct GameData
@@ -22,6 +23,9 @@ typedef struct GameData
 
     size_t enemies_length;
     double enemies_time;
+
+    double background_time;
+    int background_index;
 } GameData;
 
 typedef struct GameTextures
@@ -31,6 +35,7 @@ typedef struct GameTextures
     SDL_Texture **player;
     SDL_Texture **meteor;
     SDL_Texture **laser;
+    SDL_Texture **background;
 } GameTextures;
 
 struct GlobalGameData
@@ -95,6 +100,18 @@ int main(int argc, char **argv)
         deltatime = current_time - last_time;
         deltatime /= 100;
 
+        global_data.data.background_time += deltatime * 10;
+        if (global_data.data.background_time > BACKGROUND_INTERVAL)
+        {
+            global_data.data.background_time = 0;
+            global_data.data.background_index++;
+
+            if (global_data.data.background_index > 3)
+            {
+                global_data.data.background_index = 0;
+            }
+        }
+
         /*
         current_time = clock();
         deltatime = current_time - last_time;
@@ -151,7 +168,13 @@ int main(int argc, char **argv)
 
 void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
+    draw_size_texture(render, textures.background[global_data.data.background_index], (Vector2){0, 0}, (Size){WINDOW_SIZE, WINDOW_SIZE});
     draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
+
+    for (size_t i = 0; i < data.enemies_length; i++)
+    {
+        draw_from_texture(render, textures.enemy[0], data.enemies[i].position, data.enemies[i].size);
+    }
 
     for (size_t i = 0; i < data.player.bullet_len; i++)
     {
@@ -166,6 +189,7 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
         }
         rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, ang, SDL_FLIP_NONE);
     }
+
     global_data.data.player.time += global_data.deltatime;
 }
 
@@ -173,6 +197,7 @@ void update(void *n)
 {
     SDL_Keycode current_key;
     bool ispress = false;
+    double last_delta;
     while (global_data.running)
     {
         SDL_Event event;
@@ -210,6 +235,16 @@ void update(void *n)
             player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
         }
 
+        if (last_delta != global_data.deltatime)
+        {
+            last_delta = global_data.deltatime;
+            add_enemy_time(&global_data.data.enemies, &global_data.data.enemies_length, &global_data.data.enemies_time, global_data.deltatime);
+            if (global_data.data.enemies_length)
+            {
+                enemy_update(&global_data.data.enemies, global_data.data.enemies_length, global_data.deltatime);
+            }
+        }
+
         if (global_data.data.player.bullet_len)
         {
             laser_update(&global_data.data.player.bullet, global_data.data.player.bullet_len, global_data.deltatime);
@@ -226,17 +261,16 @@ void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position
     sprintf(n_str, "%d", n);
     for (size_t i = 0; i < length; i++)
     {
-        char *str_index = malloc(sizeof(char));
-        str_index[0] = n_str[i];
+        char str_index[1] = {n_str[i]};
         int index = atoi(str_index);
-        draw_from_texture(render, ui[index - 1], (Vector2){position.x + (i * size.width), position.y}, size);
+        draw_from_texture(render, ui[index], (Vector2){position.x + (i * size.width), position.y}, size);
     }
 }
 
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
 {
     Player p;
-    p.texture = textures.player[3];
+    p.texture = textures.player[0];
     p.size.width = 100;
     p.size.height = 100;
     p.speed = 350.0f;
@@ -258,4 +292,5 @@ void init_textures(GameTextures *textures, SDL_Renderer *render)
     load_directory_textures("./out/assets/meteor", &textures->meteor, render);
     load_directory_textures("./out/assets/laser", &textures->laser, render);
     load_directory_textures("./out/assets/ui", &textures->ui, render);
+    load_directory_textures("./out/assets/background", &textures->background, render);
 }

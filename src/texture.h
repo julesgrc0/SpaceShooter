@@ -45,6 +45,21 @@ int draw_from_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, S
     return 0;
 }
 
+int draw_size_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size)
+{
+    SDL_Rect rect = {pos.x, pos.y, size.width, size.height};
+
+    if (SDL_QueryTexture(texture, NULL, NULL, &rect.w, &rect.h))
+    {
+        return 1;
+    }
+    if (SDL_RenderCopy(render, texture, &rect, NULL))
+    {
+        return 1;
+    }
+    return 0;
+}
+
 int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 pos, Size size, double angle, SDL_RendererFlip flip)
 {
     SDL_Rect rect = {pos.x, pos.y, size.width, size.height};
@@ -120,11 +135,6 @@ bool load_directory_textures(const char *dirpath, SDL_Texture ***textures, SDL_R
                 free(tmp);
             }
         }
-    }
-
-    for (size_t i = 0; i < tmpSize; i++)
-    {
-        printf("%s\n", tmpPaths[i]);
     }
 
     //qsort(tmpPaths, tmpSize, sizeof(const char *), compare_callback);
