@@ -7,9 +7,11 @@
 #define LASER_W 10
 #define LASER_H 100
 #define LASER_SPEED 0.2
+
 #define ENEMY_TIME 500
-#define ENEMY_MAX 3
-#define ENEMY_SHOOT_INTERVAL 2
+#define ENEMY_MAX 2
+#define ENEMY_SHOOT_INTERVAL 20
+
 #define PLAYER_SHOOT_TIME 2
 #define PLAYER_MAX_STATE 5
 
@@ -58,10 +60,10 @@ typedef struct Meteor
     double speed;
 } Meteor;
 
-void player_update(Player *enemy, double deltatime, SDL_Keycode key);
+bool player_update(Player *enemy, double deltatime, SDL_Keycode key);
 void enemy_update(Enemy **enemy, size_t len, double deltatime);
 void meteor_update(Meteor **met, size_t len, double deltatime);
-void laser_update(Laser **laser, size_t len, double deltatime);
+void laser_update(Laser **laser, size_t *len, double deltatime);
 void laser_add(Laser **list, Laser laser, size_t *length);
 void create_enemy(Enemy *enemy);
 void player_after_move(Player *player, bool direction, double deltatime);
@@ -93,6 +95,7 @@ void create_enemy(Enemy *enemy)
     enemy->speed = 50;
     enemy->direction = false;
     enemy->life = 100;
+    enemy->bullet_len = 0;
     enemy->bullet = malloc(sizeof(Laser) * enemy->bullet_len);
     enemy->size = (Size){200, 200};
     enemy->position.y = 0;
@@ -113,7 +116,7 @@ void enemy_update(Enemy **enemy, size_t len, double deltatime)
             tmp.position.x -= tmp.speed * deltatime;
         }
 
-        if (tmp.position.x < 0 || tmp.position.x > (WINDOW_SIZE - tmp.size.width/2))
+        if (tmp.position.x < 0 || tmp.position.x > (WINDOW_SIZE - tmp.size.width / 2))
         {
             tmp.direction = !tmp.direction;
             if (tmp.position.x < 0)
@@ -122,25 +125,9 @@ void enemy_update(Enemy **enemy, size_t len, double deltatime)
             }
             else
             {
-                tmp.position.x = WINDOW_SIZE - tmp.size.width/2;
+                tmp.position.x = WINDOW_SIZE - tmp.size.width / 2;
             }
         }
-
-        /*tmp.waitShoot += deltatime;
-        if (tmp.waitShoot >= ENEMY_SHOOT_INTERVAL)
-        {
-            tmp.waitShoot = 0;
-
-            Laser l;
-            l.angle = 90;
-            l.size = (Size){LASER_W, LASER_H};
-            l.position = (Vector2){tmp.position.x + (tmp.size.width / 2) + l.size.width, tmp.position.y - tmp.size.height / 2};
-            l.speed = LASER_SPEED;
-
-            size_t len = tmp.bullet_len;
-            laser_add(&tmp.bullet, l, &tmp.bullet_len);
-            tmp.bullet_len = len;
-        }*/
 
         (*enemy)[i] = tmp;
     }
@@ -178,7 +165,7 @@ void player_after_move(Player *player, bool direction, double deltatime)
     }
 }
 
-void player_update(Player *player, double deltatime, SDL_Keycode key)
+bool player_update(Player *player, double deltatime, SDL_Keycode key)
 {
     double speed = deltatime * player->speed;
     bool shoot = false;
@@ -208,30 +195,46 @@ void player_update(Player *player, double deltatime, SDL_Keycode key)
     {
         player->position.x = WINDOW_SIZE - player->size.width;
     }
-
-    if (shoot && player->time > PLAYER_SHOOT_TIME)
-    {
-        player->time = 0;
-
-        Laser l;
-        l.angle = -90;
-        l.size = (Size){LASER_W, LASER_H};
-        l.position = (Vector2){player->position.x + (player->size.width - l.size.width) / 2, player->position.y - player->size.height / 2};
-        l.speed = LASER_SPEED;
-
-        size_t len = player->bullet_len;
-        laser_add(&player->bullet, l, &len);
-        player->bullet_len = len;
-    }
+    return shoot;
 }
 
-void laser_update(Laser **laser, size_t len, double deltatime)
+void laser_update(Laser **laser, size_t *len, double deltatime)
 {
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < (*len); i++)
     {
         Laser l = (*laser)[i];
         vector_angle(&l.position, l.angle, l.speed * deltatime);
         (*laser)[i] = l;
+        if (l.position.y < 0 || l.position.y > WINDOW_SIZE)
+        {
+            remove_laser(laser, len, &i);
+        }
+    }
+}
+
+void remove_laser(Laser **laser, size_t *len, int *i)
+{
+
+    for (int k = (*i); k < (*len) - 1; k++)
+    {
+        (*laser)[(*i)] = (*laser)[k + 1];
+    }
+    (*len)--;
+    (*i)--;
+    (*laser) = realloc((*laser), (*len) * sizeof(Laser));
+}
+
+void enemy_dead(Enemy **enemy, size_t *len, int *i)
+{
+    if ((*enemy)[(*i)].life <= 0)
+    {
+        for (int k = (*i); k < (*len) - 1; k++)
+        {
+            (*enemy)[(*i)] = (*enemy)[k + 1];
+        }
+        (*len)--;
+        (*i)--;
+        (*enemy) = realloc((*enemy), (*len) * sizeof(Enemy));
     }
 }
 

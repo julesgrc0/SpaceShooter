@@ -170,6 +170,7 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
     draw_size_texture(render, textures.background[global_data.data.background_index], (Vector2){0, 0}, (Size){WINDOW_SIZE, WINDOW_SIZE});
     draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
+    draw_number(textures.ui, render, data.player.life, (Vector2){0, WINDOW_SIZE - 20}, (Size){25, 50});
 
     for (size_t i = 0; i < data.enemies_length; i++)
     {
@@ -178,16 +179,15 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 
     for (size_t i = 0; i < data.player.bullet_len; i++)
     {
-        double ang = data.player.bullet[i].angle;
-        if (data.player.bullet[i].angle > 0)
+        rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, 0, SDL_FLIP_NONE);
+    }
+
+    for (size_t i = 0; i < data.enemies_length; i++)
+    {
+        for (size_t k = 0; k < data.enemies[i].bullet_len; k++)
         {
-            ang -= 90;
+            rotation_draw_texture(render, textures.laser[0], data.enemies[i].bullet[k].position, data.enemies[i].bullet[k].size, 180, SDL_FLIP_NONE);
         }
-        else
-        {
-            ang += 90;
-        }
-        rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, ang, SDL_FLIP_NONE);
     }
 
     global_data.data.player.time += global_data.deltatime;
@@ -226,10 +226,21 @@ void update(void *n)
 
             if (ispress)
             {
-                player_update(&global_data.data.player, global_data.deltatime, event.key.keysym.sym);
+                if (player_update(&global_data.data.player, global_data.deltatime, event.key.keysym.sym) && global_data.data.player.time > PLAYER_SHOOT_TIME)
+                {
+                    global_data.data.player.time = 0;
+
+                    Laser l;
+                    l.angle = -90;
+                    l.size = (Size){LASER_W, LASER_H};
+                    l.position = (Vector2){global_data.data.player.position.x + (global_data.data.player.size.width - l.size.width) / 2, global_data.data.player.position.y - global_data.data.player.size.height / 2};
+                    l.speed = LASER_SPEED;
+
+                    laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+                }
             }
         }
-
+        shoot_player_enemies(&global_data.data.player, &global_data.data.enemies, &global_data.data.enemies_length);
         if (!ispress && !global_data.data.player.move_stop)
         {
             player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
@@ -238,16 +249,39 @@ void update(void *n)
         if (last_delta != global_data.deltatime)
         {
             last_delta = global_data.deltatime;
+
             add_enemy_time(&global_data.data.enemies, &global_data.data.enemies_length, &global_data.data.enemies_time, global_data.deltatime);
+
             if (global_data.data.enemies_length)
             {
                 enemy_update(&global_data.data.enemies, global_data.data.enemies_length, global_data.deltatime);
+                for (size_t i = 0; i < global_data.data.enemies_length; i++)
+                {
+                    global_data.data.enemies[i].waitShoot += global_data.deltatime;
+                    if (global_data.data.enemies[i].waitShoot >= ENEMY_SHOOT_INTERVAL)
+                    {
+                        global_data.data.enemies[i].waitShoot = 0;
+
+                        Laser l;
+                        l.angle = 90;
+                        l.speed = LASER_SPEED * 100;
+                        l.size = (Size){LASER_W, LASER_H};
+                        l.position = (Vector2){global_data.data.enemies[i].position.x + (global_data.data.enemies[i].size.width / 2) + l.size.width, global_data.data.enemies[i].position.y + global_data.data.enemies[i].size.height / 2};
+
+                        laser_add(&global_data.data.enemies[i].bullet, l, &global_data.data.enemies[i].bullet_len);
+                    }
+
+                    if (global_data.data.enemies[i].bullet_len)
+                    {
+                        laser_update(&global_data.data.enemies[i].bullet, &global_data.data.enemies[i].bullet_len, global_data.deltatime);
+                    }
+                }
             }
         }
 
         if (global_data.data.player.bullet_len)
         {
-            laser_update(&global_data.data.player.bullet, global_data.data.player.bullet_len, global_data.deltatime);
+            laser_update(&global_data.data.player.bullet, &global_data.data.player.bullet_len, global_data.deltatime);
         }
     }
 

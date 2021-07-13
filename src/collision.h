@@ -20,36 +20,44 @@ bool AABB(Vector2 p1, Size s1, Vector2 p2, Size s2)
     return false;
 }
 
-void game_collision(Player *player, Meteor **meteor, Enemy **enemies)
+bool shoot_player_enemies(Player *player, Enemy **enemies, size_t *enemies_len)
 {
-    size_t meteor_len = (sizeof(meteor) / sizeof(Meteor));
-    for (int i = 0; i < meteor_len; i++)
+    for (size_t i = 0; i < player->bullet_len; i++)
     {
-        if (AABB(player->position, player->size, meteor[i]->position, meteor[i]->size))
+        for (size_t k = 0; k < (*enemies_len); k++)
         {
-            remove_element((void**)meteor, i, meteor_len);
-            i--;
-            meteor_len--;
-
-            player->life -= 5;
-        }
-    }
-
-    size_t enemy_len = (sizeof(enemies) / sizeof(Enemy));
-    for (int i = 0; i < enemy_len; i++)
-    {
-        size_t laser_len = sizeof(enemies[i]->bullet) / sizeof(Laser);
-        for (int k = 0; k < laser_len; k++)
-        {
-            if (AABB(player->position, player->size, enemies[i]->bullet[k].position, enemies[i]->bullet[k].size))
+            if (AABB(player->bullet[i].position, player->bullet[i].size, enemies[k]->position, enemies[k]->size))
             {
-                remove_element((void**)enemies[i]->bullet, k, laser_len);
-                k--;
-                laser_len--;
+                remove_laser(&player->bullet, &player->bullet_len, &i);
+
+                enemies[k]->life -= 10;
+                if (enemies[k]->life <= 0)
+                {
+                    enemy_dead(enemies, enemies_len, &k);
+                }
             }
         }
     }
 
-    
+    bool player_die = false;
+    for (size_t k = 0; k < (*enemies_len); k++)
+    {
+        for (size_t i = 0; i < enemies[k]->bullet_len; i++)
+        {
+
+            if (AABB(enemies[k]->bullet[i].position, enemies[k]->bullet[i].size, player->position, player->size))
+            {
+                remove_laser(&enemies[k]->bullet, &enemies[k]->bullet_len, &i);
+                
+                player->life -= 10;
+                if (player->life <= 0)
+                {
+                    player_die = true;
+                }
+            }
+        }
+    }
+
+    return player_die;
 }
 #endif
