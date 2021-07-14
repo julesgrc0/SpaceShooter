@@ -9,8 +9,8 @@
 #define LASER_SPEED 0.2
 
 #define ENEMY_TIME 500
-#define ENEMY_MAX 2
-#define ENEMY_SHOOT_INTERVAL 20
+#define ENEMY_MAX 3
+#define ENEMY_SHOOT_INTERVAL 10
 
 #define PLAYER_SHOOT_TIME 2
 #define PLAYER_MAX_STATE 5
@@ -26,9 +26,10 @@ typedef struct Laser
 typedef struct Enemy
 {
     double waitShoot;
-    int life;
+    int8_t life;
     double speed;
     bool direction;
+    int8_t type;
     SDL_Texture *texture;
     Size size;
     Vector2 position;
@@ -92,13 +93,22 @@ void add_enemy_time(Enemy **list, size_t *length, double *time, double deltatime
 
 void create_enemy(Enemy *enemy)
 {
-    enemy->speed = 50;
+    enemy->speed = rand() % (60 + 40 - 1) + 40;
+    enemy->type = (rand() % (5 + 1 - 1) + 1) - 1;
     enemy->direction = false;
     enemy->life = 100;
     enemy->bullet_len = 0;
     enemy->bullet = malloc(sizeof(Laser) * enemy->bullet_len);
     enemy->size = (Size){200, 200};
-    enemy->position.y = 0;
+    if (rand() % (3) + 1 == 2)
+    {
+        enemy->position.y = 0;
+    }
+    else
+    {
+        enemy->position.y = enemy->size.height / 2;
+    }
+
     enemy->position.x = (WINDOW_SIZE - enemy->size.width) / 2;
 }
 
@@ -205,6 +215,7 @@ void laser_update(Laser **laser, size_t *len, double deltatime)
         Laser l = (*laser)[i];
         vector_angle(&l.position, l.angle, l.speed * deltatime);
         (*laser)[i] = l;
+        
         if (l.position.y < 0 || l.position.y > WINDOW_SIZE)
         {
             remove_laser(laser, len, &i);

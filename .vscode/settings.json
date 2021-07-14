@@ -1,3 +1,5 @@
 {
-    "C_Cpp.default.includePath": ["/usr/include/SDL2"]
+    "C_Cpp.default.includePath": [
+        "/usr/include/SDL2"
+    ]
 }

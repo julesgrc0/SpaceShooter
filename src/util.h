@@ -1,10 +1,10 @@
 #ifndef _UTIL_
 #define _UTIL_
-#include <stdio.h> 
+#include <stdio.h>
 #include <math.h>
 #include <SDL2/SDL.h>
 #define PI 3.1415926535897932384626433832
-#define WINDOW_SIZE 600
+static int WINDOW_SIZE = 650;
 
 typedef struct Vector2
 {
