@@ -77,6 +77,7 @@ int rotation_draw_texture(SDL_Renderer *render, SDL_Texture *texture, Vector2 po
 
 int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size size)
 {
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "best");
     SDL_Surface *image = SDL_LoadBMP(path);
     if (!image)
     {
@@ -90,7 +91,7 @@ int draw_from_path(SDL_Renderer *render, const char *path, Vector2 pos, Size siz
     SDL_FreeSurface(image);
     int res = draw_from_texture(render, texture, pos, size);
     SDL_DestroyTexture(texture);
-
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     return res;
 }
 

@@ -74,6 +74,22 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+    SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
+    SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, "0");
+    SDL_SetHint(SDL_HINT_BMP_SAVE_LEGACY_FORMAT, "1");
+
+    /*
+    SDL_SetHint(SDL_HINT_RENDER_LOGICAL_SIZE_MODE, "letterbox");
+    SDL_SetHint(SDL_HINT_RENDER_DIRECT3D_THREADSAFE, "0");
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+    */
+
+    /* DEBUG
+    SDL_SetHint(SDL_HINT_RENDER_DIRECT3D11_DEBUG, "1");
+    SDL_SetHint(SDL_HINT_EVENT_LOGGING, "2");
+    */
+
     init_textures(&global_data.textures, renderer);
     init_game(&global_data.data, global_data.textures, renderer);
 
@@ -224,22 +240,6 @@ void update(void *n)
     double last_delta;
     while (global_data.running)
     {
-        /*for (size_t i = 0; i < global_data.data.player.bullet_len; i++)
-        {
-            for (size_t k = 0; k < global_data.data.enemies_length; k++)
-            {
-                if (AABB(global_data.data.player.bullet[i].position, global_data.data.player.bullet[i].size, global_data.data.enemies[k].position, global_data.data.enemies[k].size))
-                {
-                    remove_laser(&global_data.data.player.bullet, &global_data.data.player.bullet_len, &i);
-
-                    global_data.data.enemies[k].life -= 10;
-                    if (global_data.data.enemies[k].life <= 0)
-                    {
-                        enemy_dead(&global_data.data.enemies, &global_data.data.enemies_length, &k);
-                    }
-                }
-            }
-        }*/
 
         for (size_t k = 0; k < global_data.data.enemies_length; k++)
         {
@@ -302,9 +302,25 @@ void update(void *n)
 
         if (!ispress && !global_data.data.player.move_stop)
         {
-            player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
+           player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
         }
+        for (size_t i = 0; i < global_data.data.player.bullet_len; i++)
+        {
+            Laser laser = global_data.data.player.bullet[i];
+            for (size_t k = 0; k < global_data.data.enemies_length; k++)
+            {
+                if (AABB(laser.position, laser.size, global_data.data.enemies[k].position, global_data.data.enemies[k].size))
+                {
+                    remove_laser(&global_data.data.player.bullet, &global_data.data.player.bullet_len, &i);
 
+                    global_data.data.enemies[k].life -= 10;
+                    if (global_data.data.enemies[k].life <= 0)
+                    {
+                        enemy_dead(&global_data.data.enemies, &global_data.data.enemies_length, &k);
+                    }
+                }
+            }
+        }
         if (last_delta != global_data.deltatime)
         {
             last_delta = global_data.deltatime;
@@ -366,7 +382,7 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     p.texture = textures.player[0];
     p.size.width = 100;
     p.size.height = 100;
-    p.speed = 350.0f;
+    p.speed = 450.0f;
     p.life = 100;
     p.bullet_len = 0;
     p.bullet = malloc(sizeof(Laser) * p.bullet_len);
