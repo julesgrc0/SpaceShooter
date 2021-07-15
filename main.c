@@ -51,8 +51,8 @@ struct GlobalGameData
 
 static struct GlobalGameData global_data;
 
-void update(void *);
-void aabb_update();
+void update_detachthread(void *);
+void update_mainthread(SDL_Keycode key);
 void draw(SDL_Renderer *, GameData, GameTextures);
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render);
 void init_textures(GameTextures *, SDL_Renderer *render);
@@ -97,10 +97,11 @@ int main(int argc, char **argv)
     init_textures(&global_data.textures, renderer);
     init_game(&global_data.data, global_data.textures, renderer);
 
+    /*
     pthread_t update_thread;
-    pthread_create(&update_thread, NULL, (void *)update, (void *)NULL);
+    pthread_create(&update_thread, NULL, (void *)update_detachthread, (void *)NULL);
     pthread_detach(update_thread);
-
+    */
     Uint32 current_time;
     Uint32 last_time = SDL_GetTicks();
     double deltatime = 0.0f;
@@ -117,6 +118,8 @@ int main(int argc, char **argv)
 
     global_data.running = true;
     SDL_Event event;
+    SDL_Keycode current_key;
+    bool is_press = false;
     while (global_data.running)
     {
         counter_current = time(0);
@@ -184,8 +187,18 @@ int main(int argc, char **argv)
             {
                 global_data.running = false;
             }
+            if (event.type == SDL_KEYDOWN)
+            {
+                current_key = event.key.keysym.sym;
+                is_press = true;
+            }
+            if (event.type == SDL_KEYUP)
+            {
+                is_press = false;
+                current_key = SDLK_UNKNOWN;
+            }
         }
-
+        update_mainthread(current_key);
         SDL_RenderClear(renderer);
         draw(renderer, global_data.data, global_data.textures);
         SDL_RenderPresent(renderer);
@@ -238,8 +251,10 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
     //  Segmentation fault
     for (size_t i = 0; i < data.enemies_length; i++)
     {
+
         for (size_t k = 0; k < data.enemies[i].bullet_len; k++)
         {
+            Laser l = data.enemies[i].bullet[k];
             rotation_draw_texture(render, textures.laser[32], data.enemies[i].bullet[k].position, data.enemies[i].bullet[k].size, 180, SDL_FLIP_NONE);
         }
     }
@@ -247,11 +262,113 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
     global_data.data.player.time += global_data.deltatime;
 }
 
-void update(void *n)
+void update_mainthread(SDL_Keycode key)
+{
+    for (size_t i = 0; i < global_data.data.player.bullet_len; i++)
+    {
+        for (size_t k = 0; k < global_data.data.enemies_length; k++)
+        {
+            if (i < global_data.data.player.bullet_len)
+            {
+                if (AABB(global_data.data.player.bullet[i].position, (Size){LASER_W, LASER_H}, global_data.data.enemies[k].position, global_data.data.enemies[k].size))
+                {
+                    remove_laser(&global_data.data.player.bullet, &global_data.data.player.bullet_len, &i);
+
+                    global_data.data.enemies[k].life -= 10;
+                    if (global_data.data.enemies[k].life <= 0)
+                    {
+                        global_data.score += SCORE_VALUE * global_data.data.enemies[k].speed;
+                        enemy_dead(&global_data.data.enemies, &global_data.data.enemies_length, &k);
+                    }
+                }
+            }
+        }
+    }
+
+    for (size_t k = 0; k < global_data.data.enemies_length; k++)
+    {
+        for (size_t i = 0; i < global_data.data.enemies[k].bullet_len; i++)
+        {
+
+            if (AABB(global_data.data.enemies[k].bullet[i].position, global_data.data.enemies[k].bullet[i].size, global_data.data.player.position, global_data.data.player.size))
+            {
+                remove_laser(&global_data.data.enemies[k].bullet, &global_data.data.enemies[k].bullet_len, &i);
+
+                global_data.data.player.life -= 10;
+                if (global_data.data.player.life <= 0)
+                {
+                    global_data.running = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    if ((key != SDLK_LEFT && key != SDLK_RIGHT && key != SDLK_SPACE) && !global_data.data.player.move_stop)
+    {
+        //player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
+    }
+    else
+    {
+        if (player_update(&global_data.data.player, global_data.deltatime, key) && global_data.data.player.time > PLAYER_SHOOT_TIME)
+        {
+            global_data.data.player.time = 0;
+
+            Laser l;
+            l.angle = -90;
+            l.size = (Size){LASER_W, LASER_H};
+            l.position = (Vector2){global_data.data.player.position.x + (global_data.data.player.size.width - l.size.width) / 2, global_data.data.player.position.y - global_data.data.player.size.height / 2};
+            l.speed = LASER_SPEED;
+
+            laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+        }
+    }
+
+    add_meteor_time(&global_data.data.meteor, &global_data.data.meteor_length, &global_data.data.meteor_time, global_data.deltatime);
+    if (global_data.data.meteor_length)
+    {
+        meteor_update(&global_data.data.meteor, &global_data.data.meteor_length, global_data.deltatime);
+    }
+
+    add_enemy_time(&global_data.data.enemies, &global_data.data.enemies_length, &global_data.data.enemies_time, global_data.deltatime);
+    if (global_data.data.enemies_length)
+    {
+        enemy_update(&global_data.data.enemies, global_data.data.enemies_length, global_data.deltatime);
+        for (size_t i = 0; i < global_data.data.enemies_length; i++)
+        {
+            global_data.data.enemies[i].waitShoot += global_data.deltatime;
+            if (global_data.data.enemies[i].waitShoot >= ENEMY_SHOOT_INTERVAL)
+            {
+                global_data.data.enemies[i].waitShoot = 0;
+
+                Laser l;
+                l.angle = 90;
+                l.type = 0;
+                l.speed = LASER_SPEED;
+                l.size = (Size){LASER_W, LASER_H};
+                l.position = (Vector2){global_data.data.enemies[i].position.x + (global_data.data.enemies[i].size.width / 2) + l.size.width, global_data.data.enemies[i].position.y + global_data.data.enemies[i].size.height / 2};
+
+                laser_add(&global_data.data.enemies[i].bullet, l, &global_data.data.enemies[i].bullet_len);
+            }
+
+            if (global_data.data.enemies[i].bullet_len)
+            {
+                laser_update(&global_data.data.enemies[i].bullet, &global_data.data.enemies[i].bullet_len, global_data.deltatime);
+            }
+        }
+    }
+    if (global_data.data.player.bullet_len)
+    {
+        laser_update(&global_data.data.player.bullet, &global_data.data.player.bullet_len, global_data.deltatime);
+    }
+}
+
+void update_detachthread(void *n)
 {
     SDL_Keycode current_key;
     bool ispress = false;
     double last_delta;
+
     while (global_data.running)
     {
 
@@ -364,7 +481,7 @@ void update(void *n)
                         Laser l;
                         l.angle = 90;
                         l.type = 0;
-                        l.speed = LASER_SPEED * 300;
+                        l.speed = LASER_SPEED;
                         l.size = (Size){LASER_W, LASER_H};
                         l.position = (Vector2){global_data.data.enemies[i].position.x + (global_data.data.enemies[i].size.width / 2) + l.size.width, global_data.data.enemies[i].position.y + global_data.data.enemies[i].size.height / 2};
 
@@ -407,7 +524,7 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     p.texture = textures.player[0];
     p.size.width = 100;
     p.size.height = 100;
-    p.speed = 450.0f;
+    p.speed = PLAYER_SPEED;
     p.life = 100;
     p.bullet_len = 0;
     p.bullet = malloc(sizeof(Laser) * p.bullet_len);

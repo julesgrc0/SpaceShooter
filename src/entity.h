@@ -6,17 +6,18 @@
 
 #define LASER_W 10
 #define LASER_H 100
-#define LASER_SPEED 0.2
+#define LASER_SPEED 60
 
 #define ENEMY_TIME 500
 #define ENEMY_MAX 3
 #define ENEMY_SHOOT_INTERVAL 10
 
 #define PLAYER_SHOOT_TIME 2
+#define PLAYER_SPEED 40
 #define PLAYER_MAX_STATE 5
 
-#define METEOR_TIME 450
-#define METEOR_MAX 2
+#define METEOR_TIME 100
+#define METEOR_MAX 5
 
 typedef struct Laser
 {
@@ -68,13 +69,14 @@ typedef struct Meteor
 
 bool player_update(Player *enemy, double deltatime, SDL_Keycode key);
 void enemy_update(Enemy **enemy, size_t len, double deltatime);
-void meteor_update(Meteor **met, size_t* len, double deltatime);
+void meteor_update(Meteor **met, size_t *len, double deltatime);
 void laser_update(Laser **laser, size_t *len, double deltatime);
 void laser_add(Laser **list, Laser laser, size_t *length);
 void create_enemy(Enemy *enemy);
 void player_after_move(Player *player, bool direction, double deltatime);
 void create_meteor(Meteor *meteor);
 void remove_laser(Laser **laser, size_t *len, int *i);
+void meteor_out(Meteor **met, size_t *len, int *i);
 
 void meteor_update(Meteor **met, size_t *len, double deltatime)
 {
