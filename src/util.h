@@ -69,6 +69,11 @@ int int_length(int a)
     return length;
 }
 
+time_t time_interval(time_t start)
+{
+    return time(0) - start;
+}
+
 char *to_string(int a)
 {
     char *str = (char *)malloc(sizeof(char) * sizeof(a));

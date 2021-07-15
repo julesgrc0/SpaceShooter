@@ -37,6 +37,7 @@ typedef struct GameTextures
     SDL_Texture **meteor;
     SDL_Texture **laser;
     SDL_Texture **background;
+    SDL_Texture **bonus;
 } GameTextures;
 
 struct GlobalGameData
@@ -44,7 +45,7 @@ struct GlobalGameData
     GameData data;
     GameTextures textures;
     double deltatime;
-    long double total_time;
+    time_t total_time;
     bool running;
     int score;
 };
@@ -117,6 +118,8 @@ int main(int argc, char **argv)
     int frames = 0;
 
     global_data.running = true;
+    global_data.total_time = time(0);
+
     SDL_Event event;
     SDL_Keycode current_key;
     bool is_press = false;
@@ -128,8 +131,6 @@ int main(int argc, char **argv)
         current_time = SDL_GetTicks();
         deltatime = current_time - last_time;
         deltatime /= 100;
-
-        global_data.total_time += deltatime;
 
         /* global_data.data.background_time += deltatime * 10;
         if (global_data.data.background_time > BACKGROUND_INTERVAL)
@@ -210,6 +211,7 @@ int main(int argc, char **argv)
         last_time = current_time;
     }
 
+    free(global_data.textures.bonus);
     free(global_data.textures.ui);
     free(global_data.textures.player);
     free(global_data.textures.enemy);
@@ -229,8 +231,6 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
     draw_size_texture(render, textures.background[global_data.data.background_index], (Vector2){0, 0}, (Size){WINDOW_SIZE, WINDOW_SIZE});
     draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
-    draw_number(textures.ui, render, data.player.life, (Vector2){0, WINDOW_SIZE - 20}, (Size){25, 50});
-    draw_number(textures.ui, render, global_data.score, (Vector2){0, 0}, (Size){30, 50});
 
     for (size_t i = 0; i < data.enemies_length; i++)
     {
@@ -242,13 +242,11 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
         rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, 0, SDL_FLIP_NONE);
     }
 
-    //  Segmentation fault
     for (size_t i = 0; i < data.meteor_length; i++)
     {
         rotation_draw_texture(render, textures.meteor[data.meteor[i].type], data.meteor[i].position, data.meteor[i].size, 0, SDL_FLIP_NONE);
     }
 
-    //  Segmentation fault
     for (size_t i = 0; i < data.enemies_length; i++)
     {
 
@@ -260,6 +258,12 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
     }
 
     global_data.data.player.time += global_data.deltatime;
+
+    draw_number(textures.ui, render, data.player.life, (Vector2){0, WINDOW_SIZE - 20}, (Size){25, 50});
+    draw_number(textures.ui, render, global_data.score, (Vector2){0, 0}, (Size){30, 50});
+
+    draw_success(render, textures);
+    draw_resistence(render, textures);
 }
 
 void update_mainthread(SDL_Keycode key)
@@ -297,6 +301,7 @@ void update_mainthread(SDL_Keycode key)
                 global_data.data.player.life -= 10;
                 if (global_data.data.player.life <= 0)
                 {
+                    printf("Score: %d\nTotal time: %lds\n", global_data.score, time_interval(global_data.total_time));
                     global_data.running = false;
                     break;
                 }
@@ -518,6 +523,41 @@ void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position
     }
 }
 
+void draw_success(SDL_Renderer *render, GameTextures textures)
+{
+    if (global_data.score > 10000)
+    {
+        draw_from_texture(render, textures.bonus[7], (Vector2){WINDOW_SIZE - 150, 0}, (Size){50, 50});
+    }
+    if (global_data.score > 20000)
+    {
+        draw_from_texture(render, textures.bonus[9], (Vector2){WINDOW_SIZE - 100, 0}, (Size){50, 50});
+    }
+    if (global_data.score > 30000)
+    {
+        draw_from_texture(render, textures.bonus[8], (Vector2){WINDOW_SIZE - 50, 0}, (Size){50, 50});
+    }
+}
+
+void draw_resistence(SDL_Renderer *render, GameTextures textures)
+{
+    time_t diff = time_interval(global_data.total_time);
+    if (global_data.data.player.life <= 50 && diff > 60)
+    {
+        draw_from_texture(render, textures.bonus[4], (Vector2){WINDOW_SIZE - 150, 60}, (Size){50, 50});
+    }
+
+    if (global_data.data.player.life <= 30 && diff > 60 * 2)
+    {
+        draw_from_texture(render, textures.bonus[6], (Vector2){WINDOW_SIZE - 100, 60}, (Size){50, 50});
+    }
+
+    if (global_data.data.player.life <= 10 && diff > 60 * 3)
+    {
+        draw_from_texture(render, textures.bonus[5], (Vector2){WINDOW_SIZE - 50, 60}, (Size){50, 50});
+    }
+}
+
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
 {
     Player p;
@@ -546,4 +586,5 @@ void init_textures(GameTextures *textures, SDL_Renderer *render)
     load_directory_textures("./out/assets/laser", &textures->laser, render);
     load_directory_textures("./out/assets/ui", &textures->ui, render);
     load_directory_textures("./out/assets/background", &textures->background, render);
+    load_directory_textures("./out/assets/bonus", &textures->bonus, render);
 }

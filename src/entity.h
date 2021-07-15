@@ -34,6 +34,7 @@ typedef struct Enemy
     int8_t life;
     double speed;
     bool direction;
+    bool down_dir;
     int8_t type;
     SDL_Texture *texture;
     Size size;
@@ -140,6 +141,7 @@ void create_enemy(Enemy *enemy)
     enemy->speed = rand() % (60 + 40 - 1) + 40;
     enemy->type = (rand() % (5 + 1 - 1) + 1) - 1;
     enemy->direction = false;
+    enemy->down_dir = false;
     enemy->life = 100;
     enemy->bullet_len = 0;
     enemy->bullet = malloc(sizeof(Laser) * enemy->bullet_len);
@@ -168,6 +170,26 @@ void enemy_update(Enemy **enemy, size_t len, double deltatime)
         else
         {
             tmp.position.x -= tmp.speed * deltatime;
+        }
+
+        if (tmp.down_dir)
+        {
+            tmp.position.y += deltatime * (tmp.speed / 10);
+        }
+        else
+        {
+            tmp.position.y -= deltatime * (tmp.speed / 10);
+        }
+
+        if (tmp.position.y < 0)
+        {
+            tmp.down_dir = true;
+            tmp.position.y = 0;
+        }
+        else if (tmp.position.y > (WINDOW_SIZE - tmp.size.height * 2))
+        {
+            tmp.down_dir = false;
+            tmp.position.y = WINDOW_SIZE - tmp.size.height*2;
         }
 
         if (tmp.position.x < 0 || tmp.position.x > (WINDOW_SIZE - tmp.size.width / 2))
