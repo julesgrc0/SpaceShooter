@@ -57,6 +57,10 @@ void vector_angle(Vector2 *position, double angle, double distance)
 int int_length(int a)
 {
     int length = 0;
+    if (a == 0)
+    {
+        return 1;
+    }
     while (a > 0)
     {
         a /= 10;

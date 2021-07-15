@@ -10,7 +10,8 @@
 #include "src/texture.h"
 
 #define BACKGROUND_INTERVAL 1000
-#define FPS_MAX 300
+#define SCORE_VALUE 10
+#define FPS_MAX 1000
 
 typedef struct GameData
 {
@@ -43,7 +44,9 @@ struct GlobalGameData
     GameData data;
     GameTextures textures;
     double deltatime;
+    long double total_time;
     bool running;
+    int score;
 };
 
 static struct GlobalGameData global_data;
@@ -74,12 +77,12 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+    /*
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
     SDL_SetHint(SDL_HINT_RENDER_BATCHING, "1");
     SDL_SetHint(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, "0");
     SDL_SetHint(SDL_HINT_BMP_SAVE_LEGACY_FORMAT, "1");
 
-    /*
     SDL_SetHint(SDL_HINT_RENDER_LOGICAL_SIZE_MODE, "letterbox");
     SDL_SetHint(SDL_HINT_RENDER_DIRECT3D_THREADSAFE, "0");
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
@@ -90,6 +93,7 @@ int main(int argc, char **argv)
     SDL_SetHint(SDL_HINT_EVENT_LOGGING, "2");
     */
 
+    global_data.score = 0;
     init_textures(&global_data.textures, renderer);
     init_game(&global_data.data, global_data.textures, renderer);
 
@@ -121,6 +125,8 @@ int main(int argc, char **argv)
         current_time = SDL_GetTicks();
         deltatime = current_time - last_time;
         deltatime /= 100;
+
+        global_data.total_time += deltatime;
 
         /* global_data.data.background_time += deltatime * 10;
         if (global_data.data.background_time > BACKGROUND_INTERVAL)
@@ -211,6 +217,7 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
     draw_size_texture(render, textures.background[global_data.data.background_index], (Vector2){0, 0}, (Size){WINDOW_SIZE, WINDOW_SIZE});
     draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
     draw_number(textures.ui, render, data.player.life, (Vector2){0, WINDOW_SIZE - 20}, (Size){25, 50});
+    draw_number(textures.ui, render, global_data.score, (Vector2){0, 0}, (Size){30, 50});
 
     for (size_t i = 0; i < data.enemies_length; i++)
     {
@@ -222,6 +229,13 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
         rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, 0, SDL_FLIP_NONE);
     }
 
+    //  Segmentation fault
+    for (size_t i = 0; i < data.meteor_length; i++)
+    {
+        rotation_draw_texture(render, textures.meteor[data.meteor[i].type], data.meteor[i].position, data.meteor[i].size, 0, SDL_FLIP_NONE);
+    }
+
+    //  Segmentation fault
     for (size_t i = 0; i < data.enemies_length; i++)
     {
         for (size_t k = 0; k < data.enemies[i].bullet_len; k++)
@@ -302,8 +316,10 @@ void update(void *n)
 
         if (!ispress && !global_data.data.player.move_stop)
         {
-           player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
+            player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
         }
+
+        //  Segmentation fault (core dumped)
         for (size_t i = 0; i < global_data.data.player.bullet_len; i++)
         {
             Laser laser = global_data.data.player.bullet[i];
@@ -316,17 +332,25 @@ void update(void *n)
                     global_data.data.enemies[k].life -= 10;
                     if (global_data.data.enemies[k].life <= 0)
                     {
+                        global_data.score += SCORE_VALUE * global_data.data.enemies[k].speed;
                         enemy_dead(&global_data.data.enemies, &global_data.data.enemies_length, &k);
                     }
                 }
             }
         }
+        //
+
         if (last_delta != global_data.deltatime)
         {
             last_delta = global_data.deltatime;
 
-            add_enemy_time(&global_data.data.enemies, &global_data.data.enemies_length, &global_data.data.enemies_time, global_data.deltatime);
+            add_meteor_time(&global_data.data.meteor, &global_data.data.meteor_length, &global_data.data.meteor_time, global_data.deltatime);
+            if (global_data.data.meteor_length)
+            {
+                meteor_update(&global_data.data.meteor, &global_data.data.meteor_length, global_data.deltatime);
+            }
 
+            add_enemy_time(&global_data.data.enemies, &global_data.data.enemies_length, &global_data.data.enemies_time, global_data.deltatime);
             if (global_data.data.enemies_length)
             {
                 enemy_update(&global_data.data.enemies, global_data.data.enemies_length, global_data.deltatime);
@@ -339,6 +363,7 @@ void update(void *n)
 
                         Laser l;
                         l.angle = 90;
+                        l.type = 0;
                         l.speed = LASER_SPEED * 300;
                         l.size = (Size){LASER_W, LASER_H};
                         l.position = (Vector2){global_data.data.enemies[i].position.x + (global_data.data.enemies[i].size.width / 2) + l.size.width, global_data.data.enemies[i].position.y + global_data.data.enemies[i].size.height / 2};
@@ -392,6 +417,8 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     data->player = p;
     data->enemies = malloc(sizeof(Enemy) * data->enemies_length);
     data->meteor = malloc(sizeof(Meteor) * data->meteor_length);
+
+    data->enemies_time = ENEMY_TIME;
 }
 
 void init_textures(GameTextures *textures, SDL_Renderer *render)

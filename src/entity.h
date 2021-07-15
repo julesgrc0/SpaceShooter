@@ -15,10 +15,14 @@
 #define PLAYER_SHOOT_TIME 2
 #define PLAYER_MAX_STATE 5
 
+#define METEOR_TIME 450
+#define METEOR_MAX 2
+
 typedef struct Laser
 {
     Vector2 position;
     Size size;
+    int8_t type;
     double angle;
     double speed;
 } Laser;
@@ -39,7 +43,7 @@ typedef struct Enemy
 
 typedef struct Player
 {
-    int life;
+    int8_t life;
     int move_state;
     bool left;
     bool move_stop;
@@ -57,23 +61,43 @@ typedef struct Meteor
     SDL_Texture *texture;
     Size size;
     Vector2 position;
+    int type;
     double angle;
     double speed;
 } Meteor;
 
 bool player_update(Player *enemy, double deltatime, SDL_Keycode key);
 void enemy_update(Enemy **enemy, size_t len, double deltatime);
-void meteor_update(Meteor **met, size_t len, double deltatime);
+void meteor_update(Meteor **met, size_t* len, double deltatime);
 void laser_update(Laser **laser, size_t *len, double deltatime);
 void laser_add(Laser **list, Laser laser, size_t *length);
 void create_enemy(Enemy *enemy);
 void player_after_move(Player *player, bool direction, double deltatime);
+void create_meteor(Meteor *meteor);
+void remove_laser(Laser **laser, size_t *len, int *i);
 
-void meteor_update(Meteor **met, size_t len, double deltatime)
+void meteor_update(Meteor **met, size_t *len, double deltatime)
 {
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < (*len); i++)
     {
-        vector_angle(&met[i]->position, met[i]->angle, met[i]->speed * deltatime);
+        Meteor m = (*met)[i];
+        vector_angle(&m.position, m.angle, m.speed * deltatime);
+        (*met)[i] = m;
+        meteor_out(met, len, &i);
+    }
+}
+
+void add_meteor_time(Meteor **list, size_t *length, double *time, double deltatime)
+{
+    (*time) += deltatime * 10;
+    if ((*time) > METEOR_TIME && (*length) < METEOR_MAX)
+    {
+        Meteor meteor;
+        create_meteor(&meteor);
+        (*time) = 0;
+        (*length)++;
+        (*list) = realloc((*list), (*length) * sizeof(Meteor));
+        (*list)[(*length) - 1] = meteor;
     }
 }
 
@@ -89,6 +113,24 @@ void add_enemy_time(Enemy **list, size_t *length, double *time, double deltatime
         (*list) = realloc((*list), (*length) * sizeof(Enemy));
         (*list)[(*length) - 1] = enemy;
     }
+}
+
+void create_meteor(Meteor *meteor)
+{
+    meteor->speed = rand() % (60 + 40 - 1) + 40;
+    meteor->angle = rand() % (180 + 1 - 1) + 1;
+    meteor->size = (Size){200, 200};
+    meteor->type = (rand() % (9 + 1 - 1) + 1) - 1;
+    if (rand() % (3) + 1 == 2)
+    {
+        meteor->position.y = 0;
+    }
+    else
+    {
+        meteor->position.y = meteor->size.height / 2;
+    }
+
+    meteor->position.x = rand() % ((WINDOW_SIZE - meteor->size.width) + 0 - 1) + 0;
 }
 
 void create_enemy(Enemy *enemy)
@@ -215,7 +257,7 @@ void laser_update(Laser **laser, size_t *len, double deltatime)
         Laser l = (*laser)[i];
         vector_angle(&l.position, l.angle, l.speed * deltatime);
         (*laser)[i] = l;
-        
+
         if (l.position.y < 0 || l.position.y > WINDOW_SIZE)
         {
             remove_laser(laser, len, &i);
@@ -246,6 +288,20 @@ void enemy_dead(Enemy **enemy, size_t *len, int *i)
         (*len)--;
         (*i)--;
         (*enemy) = realloc((*enemy), (*len) * sizeof(Enemy));
+    }
+}
+
+void meteor_out(Meteor **met, size_t *len, int *i)
+{
+    if (((*met)[(*i)].position.x < 0 || (*met)[(*i)].position.x > WINDOW_SIZE) && ((*met)[(*i)].position.y < 0 || (*met)[(*i)].position.y > WINDOW_SIZE))
+    {
+        for (int k = (*i); k < (*len) - 1; k++)
+        {
+            (*met)[(*i)] = (*met)[k + 1];
+        }
+        (*len)--;
+        (*i)--;
+        (*met) = realloc((*met), (*len) * sizeof(Meteor));
     }
 }
 

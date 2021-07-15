@@ -168,6 +168,10 @@ SDL_Texture **load_texture(SDL_Renderer *render, char **paths, size_t length)
             textures[i] = SDL_CreateTextureFromSurface(render, image);
             SDL_FreeSurface(image);
         }
+        else
+        {
+            printf("Fail to load \"%s\" texture.\n", paths[i]);
+        }
     }
     return textures;
 }
