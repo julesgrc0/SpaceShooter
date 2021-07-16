@@ -5,6 +5,7 @@
 
 #include <pthread.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 #include <time.h>
 #include "src/util.h"
 #include "src/texture.h"
@@ -31,6 +32,17 @@ typedef struct GameData
     double boost_time;
 } GameData;
 
+typedef struct GameAudio
+{
+    Mix_Music *player_laser;
+    Mix_Music *enemies_laser;
+    Mix_Music *player_shield;
+    Mix_Music *player_shield_stop;
+    Mix_Music *lose;
+    Mix_Music *item_p;
+    Mix_Music *item_m;
+} GameAudio;
+
 typedef struct GameTextures
 {
     SDL_Texture **ui;
@@ -45,11 +57,20 @@ typedef struct GameTextures
 
 struct GlobalGameData
 {
+    GameAudio audio;
     GameData data;
     GameTextures textures;
+
     double deltatime;
     time_t total_time;
     bool running;
+
+    bool shiel_song;
+    bool shiel_song_stop;
+
+    bool song_item_p;
+    bool song_item_m;
+
     int score;
     int color_index;
     int kill;
@@ -64,8 +85,10 @@ void draw(SDL_Renderer *, GameData, GameTextures);
 
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render);
 void init_textures(GameTextures *, SDL_Renderer *render);
+void init_audio(GameAudio *);
 
 bool update_boost(bool *is, Vector2 *pos, double *time);
+void song_boost(bool *p, bool *l, bool *im, bool *ip, Mix_Music *sm, Mix_Music *sp);
 
 int main(int argc, char **argv)
 {
@@ -79,7 +102,12 @@ int main(int argc, char **argv)
         PLAYER_DEFAULT = atoi(argv[2]) - 1;
     }
 
-    if (SDL_Init(SDL_INIT_VIDEO))
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
+    {
+        return 1;
+    }
+
+    if (Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096) == -1)
     {
         return 1;
     }
@@ -103,6 +131,12 @@ int main(int argc, char **argv)
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
     */
 
+#if defined linux && SDL_VERSION_ATLEAST(2, 0, 8)
+    if (!SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0"))
+    {
+        return 1;
+    }
+#endif
     /* DEBUG
     SDL_SetHint(SDL_HINT_RENDER_DIRECT3D11_DEBUG, "1");
     SDL_SetHint(SDL_HINT_EVENT_LOGGING, "2");
@@ -110,6 +144,7 @@ int main(int argc, char **argv)
 
     global_data.score = 0;
     init_textures(&global_data.textures, renderer);
+    init_audio(&global_data.audio);
     init_game(&global_data.data, global_data.textures, renderer);
 
     /*
@@ -233,6 +268,10 @@ int main(int argc, char **argv)
         last_time = current_time;
     }
 
+    Mix_FreeMusic(global_data.audio.player_laser);
+    Mix_FreeMusic(global_data.audio.enemies_laser);
+    Mix_FreeMusic(global_data.audio.player_shield);
+
     free(global_data.textures.bonus);
     free(global_data.textures.ui);
     free(global_data.textures.player);
@@ -245,6 +284,8 @@ int main(int argc, char **argv)
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+
+    Mix_CloseAudio();
     SDL_Quit();
     return 0;
 }
@@ -265,6 +306,11 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
     {
         laser_texture_index = 26;
     }
+    else if (global_data.data.player.boost_damage)
+    {
+        laser_texture_index = 7;
+    }
+
     for (size_t i = 0; i < data.player.bullet_len; i++)
     {
         rotation_draw_texture(render, textures.laser[laser_texture_index], data.player.bullet[i].position, data.player.bullet[i].size, 0, SDL_FLIP_NONE);
@@ -301,7 +347,7 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 
     if (data.player.boost_resistence)
     {
-        draw_from_texture(render, textures.effect[0], (Vector2){global_data.data.player.position.x - 16, global_data.data.player.position.y - 20}, global_data.data.player.size);
+        draw_from_texture(render, textures.effect[0], (Vector2){global_data.data.player.position.x - 23, global_data.data.player.position.y - 40}, global_data.data.player.size);
 
         draw_from_texture(render, textures.bonus[3], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
     }
@@ -355,6 +401,7 @@ void update_mainthread(SDL_Keycode key)
                 global_data.data.player.life -= 10;
                 if (global_data.data.player.life <= 0)
                 {
+                    Mix_PlayMusic(global_data.audio.lose, 1);
                     printf("\nScore: %d\nTotal time: %lds\nKill: %d\n", global_data.score, time_interval(global_data.total_time), global_data.kill);
                     global_data.running = false;
                     break;
@@ -379,8 +426,10 @@ void update_mainthread(SDL_Keycode key)
             l.position = (Vector2){global_data.data.player.position.x + (global_data.data.player.size.width - l.size.width) / 2, global_data.data.player.position.y - global_data.data.player.size.height / 2};
             l.speed = LASER_SPEED;
 
+            Mix_PlayMusic(global_data.audio.player_laser, 1);
             if (global_data.data.player.boost_fire)
             {
+
                 l.position.x -= l.size.width * 2;
                 laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
                 l.position.x += l.size.width * 4;
@@ -388,6 +437,7 @@ void update_mainthread(SDL_Keycode key)
             }
             else
             {
+
                 laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
             }
         }
@@ -395,14 +445,36 @@ void update_mainthread(SDL_Keycode key)
 
     add_boost_time(&global_data.data.player, &global_data.data.boost_time, global_data.deltatime);
 
+    bool last_resistence = global_data.data.player.boost_resistence;
+    bool last_fire = global_data.data.player.boost_fire;
+    bool last_damage = global_data.data.player.boost_damage;
+
     if (update_boost(&global_data.data.player.boost_fire, &global_data.data.player.fire_pos, &global_data.data.player.boost_fire_time))
     {
+        song_boost(&global_data.data.player.boost_fire, &last_fire, &global_data.song_item_m, &global_data.song_item_p, global_data.audio.item_m, global_data.audio.item_p);
     }
     else if (update_boost(&global_data.data.player.boost_resistence, &global_data.data.player.resistence_pos, &global_data.data.player.boost_resistence_time))
     {
+        if (global_data.data.player.boost_resistence && !global_data.shiel_song)
+        {
+            global_data.shiel_song = true;
+            global_data.shiel_song_stop = false;
+            Mix_PlayMusic(global_data.audio.player_shield, 3);
+        }
+        else if (!global_data.data.player.boost_resistence)
+        {
+            global_data.shiel_song = false;
+
+            if (!global_data.shiel_song_stop && last_resistence != global_data.data.player.boost_resistence)
+            {
+                Mix_PlayMusic(global_data.audio.player_shield_stop, 3);
+                global_data.shiel_song_stop = true;
+            }
+        }
     }
     else if (update_boost(&global_data.data.player.boost_damage, &global_data.data.player.damage_pos, &global_data.data.player.boost_damage_time))
     {
+        song_boost(&global_data.data.player.boost_damage, &last_damage, &global_data.song_item_m, &global_data.song_item_p, global_data.audio.item_m, global_data.audio.item_p);
         if (global_data.data.player.damage == 10)
         {
             global_data.data.player.damage = 20;
@@ -437,6 +509,7 @@ void update_mainthread(SDL_Keycode key)
                 l.size = (Size){LASER_W, LASER_H};
                 l.position = (Vector2){global_data.data.enemies[i].position.x + (global_data.data.enemies[i].size.width / 2) + l.size.width, global_data.data.enemies[i].position.y + global_data.data.enemies[i].size.height / 2};
 
+                Mix_PlayMusic(global_data.audio.enemies_laser, 1);
                 laser_add(&global_data.data.enemies[i].bullet, l, &global_data.data.enemies[i].bullet_len);
             }
 
@@ -625,17 +698,17 @@ void draw_success(SDL_Renderer *render, GameTextures textures)
 
 void draw_kill(SDL_Renderer *render, GameTextures textures)
 {
-    if (global_data.kill > 10)
+    if (global_data.kill >= 10)
     {
         draw_from_texture(render, textures.bonus[11], (Vector2){WINDOW_SIZE - 50, 100}, (Size){50, 50});
     }
 
-    if (global_data.kill > 40)
+    if (global_data.kill >= 20)
     {
         draw_from_texture(render, textures.bonus[10], (Vector2){WINDOW_SIZE - 100, 100}, (Size){50, 50});
     }
 
-    if (global_data.kill > 100)
+    if (global_data.kill >= 40)
     {
         draw_from_texture(render, textures.bonus[12], (Vector2){WINDOW_SIZE - 150, 100}, (Size){50, 50});
     }
@@ -699,6 +772,37 @@ void init_textures(GameTextures *textures, SDL_Renderer *render)
     load_directory_textures("./out/assets/background", &textures->background, render);
     load_directory_textures("./out/assets/bonus", &textures->bonus, render);
     load_directory_textures("./out/assets/effect", &textures->effect, render);
+}
+
+void init_audio(GameAudio *audio)
+{
+    audio->player_laser = Mix_LoadMUS("./out/assets/audio/sfx_laser1.ogg");
+    audio->enemies_laser = Mix_LoadMUS("./out/assets/audio/sfx_laser2.ogg");
+    audio->player_shield = Mix_LoadMUS("./out/assets/audio/sfx_shieldDown.ogg");
+    audio->player_shield_stop = Mix_LoadMUS("./out/assets/audio/sfx_shieldUp.ogg");
+    audio->lose = Mix_LoadMUS("./out/assets/audio/sfx_lose.ogg");
+    audio->item_p = Mix_LoadMUS("./out/assets/audio/sfx_zap.ogg");
+    audio->item_m = Mix_LoadMUS("./out/assets/audio/sfx_twoTone.ogg");
+}
+
+void song_boost(bool *p, bool *l, bool *im, bool *ip, Mix_Music *sm, Mix_Music *sp)
+{
+    if ((*p) && !(*ip))
+    {
+        (*ip) = true;
+        (*im) = false;
+        Mix_PlayMusic(sp, 2);
+    }
+    else if (!(*p))
+    {
+        (*ip) = false;
+
+        if (!(*im) && (*l) != (*p))
+        {
+            Mix_PlayMusic(sm, 2);
+            (*im) = true;
+        }
+    }
 }
 
 bool update_boost(bool *is, Vector2 *pos, double *time)
