@@ -50,6 +50,7 @@ struct GlobalGameData
     time_t total_time;
     bool running;
     int score;
+    int color_index;
 };
 
 static struct GlobalGameData global_data;
@@ -65,6 +66,10 @@ int main(int argc, char **argv)
     if (argc > 1 && atoi(argv[1]) >= 500)
     {
         WINDOW_SIZE = atoi(argv[1]);
+    }
+    if (argc > 2 && atoi(argv[2]) > 0 && atoi(argv[2]) < 5)
+    {
+        PLAYER_DEFAULT = atoi(argv[2]) - 1;
     }
 
     if (SDL_Init(SDL_INIT_VIDEO))
@@ -200,6 +205,14 @@ int main(int argc, char **argv)
                 is_press = false;
                 current_key = SDLK_UNKNOWN;
             }
+            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT)
+            {
+                global_data.color_index++;
+                if (global_data.color_index >= 4)
+                {
+                    global_data.color_index = 0;
+                }
+            }
         }
         update_mainthread(current_key);
         SDL_RenderClear(renderer);
@@ -232,21 +245,32 @@ int main(int argc, char **argv)
 void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 {
     draw_size_texture(render, textures.background[global_data.data.background_index], (Vector2){0, 0}, (Size){WINDOW_SIZE, WINDOW_SIZE});
-    draw_from_texture(render, data.player.texture, data.player.position, data.player.size);
+    draw_from_texture(render, textures.player[data.player.texture + global_data.color_index], data.player.position, data.player.size);
 
     for (size_t i = 0; i < data.enemies_length; i++)
     {
-        draw_from_texture(render, textures.enemy[data.enemies[i].type], data.enemies[i].position, data.enemies[i].size);
+
+        draw_from_texture(render, textures.enemy[data.enemies[i].type + (global_data.color_index * 5)], data.enemies[i].position, data.enemies[i].size);
     }
 
+    int laser_texture_index = 0;
+    if (global_data.data.player.boost_fire)
+    {
+        laser_texture_index = 26;
+    }
     for (size_t i = 0; i < data.player.bullet_len; i++)
     {
-        rotation_draw_texture(render, textures.laser[0], data.player.bullet[i].position, data.player.bullet[i].size, 0, SDL_FLIP_NONE);
+        rotation_draw_texture(render, textures.laser[laser_texture_index], data.player.bullet[i].position, data.player.bullet[i].size, 0, SDL_FLIP_NONE);
     }
 
+    int meteor_textures_add = 0;
+    if (global_data.data.player.life <= 50)
+    {
+        meteor_textures_add = 10;
+    }
     for (size_t i = 0; i < data.meteor_length; i++)
     {
-        rotation_draw_texture(render, textures.meteor[data.meteor[i].type], data.meteor[i].position, data.meteor[i].size, 0, SDL_FLIP_NONE);
+        rotation_draw_texture(render, textures.meteor[data.meteor[i].type + meteor_textures_add], data.meteor[i].position, data.meteor[i].size, 0, SDL_FLIP_NONE);
     }
 
     for (size_t i = 0; i < data.enemies_length; i++)
@@ -268,11 +292,11 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 
     if (data.player.boost_resistence)
     {
-        draw_from_texture(render, textures.bonus[2], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[3], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
     }
     else if (data.player.boost_fire)
     {
-        draw_from_texture(render, textures.bonus[3], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[2], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
     }
 
     draw_success(render, textures);
@@ -307,7 +331,7 @@ void update_mainthread(SDL_Keycode key)
         for (size_t i = 0; i < global_data.data.enemies[k].bullet_len; i++)
         {
 
-            if (AABB(global_data.data.enemies[k].bullet[i].position, global_data.data.enemies[k].bullet[i].size, global_data.data.player.position, global_data.data.player.size))
+            if (!global_data.data.player.boost_resistence && AABB(global_data.data.enemies[k].bullet[i].position, global_data.data.enemies[k].bullet[i].size, global_data.data.player.position, global_data.data.player.size))
             {
                 remove_laser(&global_data.data.enemies[k].bullet, &global_data.data.enemies[k].bullet_len, &i);
 
@@ -338,7 +362,17 @@ void update_mainthread(SDL_Keycode key)
             l.position = (Vector2){global_data.data.player.position.x + (global_data.data.player.size.width - l.size.width) / 2, global_data.data.player.position.y - global_data.data.player.size.height / 2};
             l.speed = LASER_SPEED;
 
-            laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+            if (global_data.data.player.boost_fire)
+            {
+                l.position.x -= l.size.width * 2;
+                laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+                l.position.x += l.size.width * 4;
+                laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+            }
+            else
+            {
+                laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+            }
         }
     }
 
@@ -627,7 +661,7 @@ void draw_resistence(SDL_Renderer *render, GameTextures textures)
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
 {
     Player p;
-    p.texture = textures.player[0];
+    p.texture = PLAYER_DEFAULT * 4;
     p.size.width = 100;
     p.size.height = 100;
     p.speed = PLAYER_SPEED;

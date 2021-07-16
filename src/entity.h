@@ -21,8 +21,10 @@
 
 #define BOOST_TIME 500
 #define BOOST_SPEED 5
-#define BOOST_DURATION 10000
+#define BOOST_DURATION 5000
 #define BOOST_SIZE 40
+
+static int PLAYER_DEFAULT = 0;
 
 typedef struct Laser
 {
@@ -56,7 +58,7 @@ typedef struct Player
     bool move_stop;
     double speed;
     double time;
-    SDL_Texture *texture;
+    int texture;
     Size size;
     Vector2 position;
     Laser *bullet;
