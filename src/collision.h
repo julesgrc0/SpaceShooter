@@ -2,8 +2,8 @@
 #define _COLLISION_
 
 #include <stdbool.h>
-#include "util.h"
 #include "entity.h"
+#include "util.h"
 
 bool AABB(Vector2 p1, Size s1, Vector2 p2, Size s2);
 

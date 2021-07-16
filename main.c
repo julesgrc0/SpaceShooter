@@ -27,6 +27,8 @@ typedef struct GameData
 
     double background_time;
     int background_index;
+
+    double boost_time;
 } GameData;
 
 typedef struct GameTextures
@@ -172,8 +174,8 @@ int main(int argc, char **argv)
 
         if ((counter_current - counter_start) >= 1)
         {
-            //printf("\rFPS: %d Deltatime: %f", frames, deltatime);
-            //fflush(stdout);
+            printf("\rFPS: %d Deltatime: %f Time: %d", frames, deltatime, time_interval(global_data.total_time));
+            fflush(stdout);
             char *title = malloc(sizeof(char) * int_length(frames));
             sprintf(title, "Space Shooter - %d FPS", frames);
             SDL_SetWindowTitle(window, title);
@@ -257,10 +259,21 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
         }
     }
 
+    draw_from_texture(render, textures.bonus[1], data.player.fire_pos, (Size){BOOST_SIZE, BOOST_SIZE});
+    draw_from_texture(render, textures.bonus[0], data.player.resistence_pos, (Size){BOOST_SIZE, BOOST_SIZE});
     global_data.data.player.time += global_data.deltatime;
 
     draw_number(textures.ui, render, data.player.life, (Vector2){0, WINDOW_SIZE - 20}, (Size){25, 50});
     draw_number(textures.ui, render, global_data.score, (Vector2){0, 0}, (Size){30, 50});
+
+    if (data.player.boost_resistence)
+    {
+        draw_from_texture(render, textures.bonus[2], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
+    }
+    else if (data.player.boost_fire)
+    {
+        draw_from_texture(render, textures.bonus[3], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
+    }
 
     draw_success(render, textures);
     draw_resistence(render, textures);
@@ -326,6 +339,59 @@ void update_mainthread(SDL_Keycode key)
             l.speed = LASER_SPEED;
 
             laser_add(&global_data.data.player.bullet, l, &global_data.data.player.bullet_len);
+        }
+    }
+
+    add_boost_time(&global_data.data.player, &global_data.data.boost_time, global_data.deltatime);
+    if (global_data.data.player.boost_fire && global_data.data.player.fire_pos.y == -BOOST_SIZE)
+    {
+        global_data.data.player.boost_fire_time += global_data.deltatime * 10;
+        if (global_data.data.player.boost_fire_time > BOOST_DURATION)
+        {
+            global_data.data.player.boost_fire = false;
+            global_data.data.player.boost_fire_time = 0;
+        }
+    }
+    else if (global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y == -BOOST_SIZE)
+    {
+        global_data.data.player.boost_resistence_time += global_data.deltatime * 10;
+        if (global_data.data.player.boost_resistence_time > BOOST_DURATION)
+        {
+            global_data.data.player.boost_resistence = false;
+            global_data.data.player.boost_resistence_time = 0;
+        }
+    }
+
+    if (!global_data.data.player.boost_fire && global_data.data.player.fire_pos.y != -BOOST_SIZE)
+    {
+        global_data.data.player.fire_pos.y += global_data.deltatime * BOOST_SPEED;
+        if (AABB(global_data.data.player.fire_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
+        {
+            global_data.data.player.boost_fire = true;
+            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_fire_time = 0;
+        }
+        if (global_data.data.player.fire_pos.y > WINDOW_SIZE)
+        {
+            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_fire = false;
+            global_data.data.player.boost_fire_time = 0;
+        }
+    }
+    else if (!global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y != -BOOST_SIZE)
+    {
+        global_data.data.player.resistence_pos.y += global_data.deltatime * BOOST_SPEED;
+        if (AABB(global_data.data.player.resistence_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
+        {
+            global_data.data.player.boost_resistence = true;
+            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_resistence_time = 0;
+        }
+        if (global_data.data.player.resistence_pos.y > WINDOW_SIZE)
+        {
+            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_resistence = false;
+            global_data.data.player.boost_resistence_time = 0;
         }
     }
 
@@ -527,7 +593,7 @@ void draw_success(SDL_Renderer *render, GameTextures textures)
 {
     if (global_data.score > 10000)
     {
-        draw_from_texture(render, textures.bonus[7], (Vector2){WINDOW_SIZE - 150, 0}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[7], (Vector2){WINDOW_SIZE - 50, 0}, (Size){50, 50});
     }
     if (global_data.score > 20000)
     {
@@ -535,7 +601,7 @@ void draw_success(SDL_Renderer *render, GameTextures textures)
     }
     if (global_data.score > 30000)
     {
-        draw_from_texture(render, textures.bonus[8], (Vector2){WINDOW_SIZE - 50, 0}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[8], (Vector2){WINDOW_SIZE - 150, 0}, (Size){50, 50});
     }
 }
 
@@ -544,17 +610,17 @@ void draw_resistence(SDL_Renderer *render, GameTextures textures)
     time_t diff = time_interval(global_data.total_time);
     if (global_data.data.player.life <= 50 && diff > 60)
     {
-        draw_from_texture(render, textures.bonus[4], (Vector2){WINDOW_SIZE - 150, 60}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[4], (Vector2){WINDOW_SIZE - 50, 55}, (Size){50, 50});
     }
 
     if (global_data.data.player.life <= 30 && diff > 60 * 2)
     {
-        draw_from_texture(render, textures.bonus[6], (Vector2){WINDOW_SIZE - 100, 60}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[6], (Vector2){WINDOW_SIZE - 100, 55}, (Size){50, 50});
     }
 
     if (global_data.data.player.life <= 10 && diff > 60 * 3)
     {
-        draw_from_texture(render, textures.bonus[5], (Vector2){WINDOW_SIZE - 50, 60}, (Size){50, 50});
+        draw_from_texture(render, textures.bonus[5], (Vector2){WINDOW_SIZE - 150, 55}, (Size){50, 50});
     }
 }
 
@@ -566,6 +632,12 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     p.size.height = 100;
     p.speed = PLAYER_SPEED;
     p.life = 100;
+    p.fire_pos = (Vector2){0, -BOOST_SIZE};
+    p.resistence_pos = (Vector2){0, -BOOST_SIZE};
+    p.boost_resistence = false;
+    p.boost_fire = false;
+    p.boost_fire_time = 0;
+    p.boost_resistence_time = 0;
     p.bullet_len = 0;
     p.bullet = malloc(sizeof(Laser) * p.bullet_len);
     p.position.x = (WINDOW_SIZE - p.size.width) / 2;

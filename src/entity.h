@@ -19,6 +19,11 @@
 #define METEOR_TIME 100
 #define METEOR_MAX 5
 
+#define BOOST_TIME 500
+#define BOOST_SPEED 5
+#define BOOST_DURATION 10000
+#define BOOST_SIZE 40
+
 typedef struct Laser
 {
     Vector2 position;
@@ -56,6 +61,14 @@ typedef struct Player
     Vector2 position;
     Laser *bullet;
     size_t bullet_len;
+
+    double boost_resistence_time;
+    bool boost_resistence;
+    Vector2 resistence_pos;
+
+    double boost_fire_time;
+    bool boost_fire;
+    Vector2 fire_pos;
 } Player;
 
 typedef struct Meteor
@@ -78,6 +91,30 @@ void player_after_move(Player *player, bool direction, double deltatime);
 void create_meteor(Meteor *meteor);
 void remove_laser(Laser **laser, size_t *len, int *i);
 void meteor_out(Meteor **met, size_t *len, int *i);
+void add_boost_time(Player *player, double *time, float deltatime);
+
+void add_boost_time(Player *player, double *time, float deltatime)
+{
+    if (!player->boost_resistence && !player->boost_fire && player->fire_pos.y == -BOOST_SIZE && player->resistence_pos.y == -BOOST_SIZE)
+    {
+
+        (*time) += deltatime * 10;
+        if ((*time) > BOOST_TIME)
+        {
+            (*time) = 0;
+            if (rand() % (2 + 1 - 1) + 1 == 2)
+            {
+                player->fire_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
+                player->resistence_pos = (Vector2){0, -BOOST_SIZE};
+            }
+            else
+            {
+                player->resistence_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
+                player->fire_pos = (Vector2){0, -BOOST_SIZE};
+            }
+        }
+    }
+}
 
 void meteor_update(Meteor **met, size_t *len, double deltatime)
 {
@@ -186,10 +223,10 @@ void enemy_update(Enemy **enemy, size_t len, double deltatime)
             tmp.down_dir = true;
             tmp.position.y = 0;
         }
-        else if (tmp.position.y > (WINDOW_SIZE - tmp.size.height * 2))
+        else if (tmp.position.y > (WINDOW_SIZE - tmp.size.height * 1.5))
         {
             tmp.down_dir = false;
-            tmp.position.y = WINDOW_SIZE - tmp.size.height*2;
+            tmp.position.y = WINDOW_SIZE - tmp.size.height * 1.5;
         }
 
         if (tmp.position.x < 0 || tmp.position.x > (WINDOW_SIZE - tmp.size.width / 2))
