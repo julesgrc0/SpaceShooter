@@ -51,6 +51,7 @@ struct GlobalGameData
     bool running;
     int score;
     int color_index;
+    int kill;
 };
 
 static struct GlobalGameData global_data;
@@ -301,6 +302,7 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 
     draw_success(render, textures);
     draw_resistence(render, textures);
+    draw_kill(render, textures);
 }
 
 void update_mainthread(SDL_Keycode key)
@@ -320,6 +322,7 @@ void update_mainthread(SDL_Keycode key)
                     {
                         global_data.score += SCORE_VALUE * global_data.data.enemies[k].speed;
                         enemy_dead(&global_data.data.enemies, &global_data.data.enemies_length, &k);
+                        global_data.kill++;
                     }
                 }
             }
@@ -338,7 +341,7 @@ void update_mainthread(SDL_Keycode key)
                 global_data.data.player.life -= 10;
                 if (global_data.data.player.life <= 0)
                 {
-                    printf("Score: %d\nTotal time: %lds\n", global_data.score, time_interval(global_data.total_time));
+                    printf("\nScore: %d\nTotal time: %lds\nKill: %d\n", global_data.score, time_interval(global_data.total_time), global_data.kill);
                     global_data.running = false;
                     break;
                 }
@@ -636,6 +639,24 @@ void draw_success(SDL_Renderer *render, GameTextures textures)
     if (global_data.score > 30000)
     {
         draw_from_texture(render, textures.bonus[8], (Vector2){WINDOW_SIZE - 150, 0}, (Size){50, 50});
+    }
+}
+
+void draw_kill(SDL_Renderer *render, GameTextures textures)
+{
+    if (global_data.kill > 10)
+    {
+        draw_from_texture(render, textures.bonus[11], (Vector2){WINDOW_SIZE - 50, 100}, (Size){50, 50});
+    }
+
+    if (global_data.kill > 40)
+    {
+        draw_from_texture(render, textures.bonus[10], (Vector2){WINDOW_SIZE - 100, 100}, (Size){50, 50});
+    }
+
+    if (global_data.kill > 100)
+    {
+        draw_from_texture(render, textures.bonus[12], (Vector2){WINDOW_SIZE - 150, 100}, (Size){50, 50});
     }
 }
 
