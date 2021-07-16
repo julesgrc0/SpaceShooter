@@ -110,20 +110,20 @@ void add_boost_time(Player *player, double *time, float deltatime)
         {
             (*time) = 0;
             int rnd = rand() % (3 + 1 - 1) + 1;
-            
+
             player->fire_pos = (Vector2){0, -BOOST_SIZE};
             player->damage_pos = (Vector2){0, -BOOST_SIZE};
             player->resistence_pos = (Vector2){0, -BOOST_SIZE};
 
-            if (rnd == 2)
+            if (rnd == 1)
             {
                 player->fire_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
             }
-            else if (rnd == 3)
+            else if (rnd == 2)
             {
                 player->resistence_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
             }
-            else if (rnd == 1)
+            else if (rnd == 3)
             {
                 player->damage_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
             }

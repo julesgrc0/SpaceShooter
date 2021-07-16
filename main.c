@@ -40,6 +40,7 @@ typedef struct GameTextures
     SDL_Texture **laser;
     SDL_Texture **background;
     SDL_Texture **bonus;
+    SDL_Texture **effect;
 } GameTextures;
 
 struct GlobalGameData
@@ -72,11 +73,11 @@ int main(int argc, char **argv)
     {
         WINDOW_SIZE = atoi(argv[1]);
     }
+
     if (argc > 2 && atoi(argv[2]) > 0 && atoi(argv[2]) < 5)
     {
         PLAYER_DEFAULT = atoi(argv[2]) - 1;
     }
-
 
     if (SDL_Init(SDL_INIT_VIDEO))
     {
@@ -300,6 +301,8 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 
     if (data.player.boost_resistence)
     {
+        draw_from_texture(render, textures.effect[0], (Vector2){global_data.data.player.position.x - 16, global_data.data.player.position.y - 20}, global_data.data.player.size);
+
         draw_from_texture(render, textures.bonus[3], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
     }
     else if (data.player.boost_fire)
@@ -695,6 +698,7 @@ void init_textures(GameTextures *textures, SDL_Renderer *render)
     load_directory_textures("./out/assets/ui", &textures->ui, render);
     load_directory_textures("./out/assets/background", &textures->background, render);
     load_directory_textures("./out/assets/bonus", &textures->bonus, render);
+    load_directory_textures("./out/assets/effect", &textures->effect, render);
 }
 
 bool update_boost(bool *is, Vector2 *pos, double *time)
@@ -729,57 +733,3 @@ bool update_boost(bool *is, Vector2 *pos, double *time)
 
     return false;
 }
-
-/*
- if (global_data.data.player.boost_fire && global_data.data.player.fire_pos.y == -BOOST_SIZE)
-    {
-        global_data.data.player.boost_fire_time += global_data.deltatime * 10;
-        if (global_data.data.player.boost_fire_time > BOOST_DURATION)
-        {
-            global_data.data.player.boost_fire = false;
-            global_data.data.player.boost_fire_time = 0;
-        }
-    }
-    else if (global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y == -BOOST_SIZE)
-    {
-        global_data.data.player.boost_resistence_time += global_data.deltatime * 10;
-        if (global_data.data.player.boost_resistence_time > BOOST_DURATION)
-        {
-            global_data.data.player.boost_resistence = false;
-            global_data.data.player.boost_resistence_time = 0;
-        }
-    }
-
-    if (!global_data.data.player.boost_fire && global_data.data.player.fire_pos.y != -BOOST_SIZE)
-    {
-        global_data.data.player.fire_pos.y += global_data.deltatime * BOOST_SPEED;
-        if (AABB(global_data.data.player.fire_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
-        {
-            global_data.data.player.boost_fire = true;
-            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_fire_time = 0;
-        }
-        if (global_data.data.player.fire_pos.y > WINDOW_SIZE)
-        {
-            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_fire = false;
-            global_data.data.player.boost_fire_time = 0;
-        }
-    }
-    else if (!global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y != -BOOST_SIZE)
-    {
-        global_data.data.player.resistence_pos.y += global_data.deltatime * BOOST_SPEED;
-        if (AABB(global_data.data.player.resistence_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
-        {
-            global_data.data.player.boost_resistence = true;
-            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_resistence_time = 0;
-        }
-        if (global_data.data.player.resistence_pos.y > WINDOW_SIZE)
-        {
-            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_resistence = false;
-            global_data.data.player.boost_resistence_time = 0;
-        }
-    }
- */
