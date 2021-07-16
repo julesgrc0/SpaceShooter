@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_ttf.h>
 #include <time.h>
 #include "src/util.h"
 #include "src/texture.h"
@@ -60,16 +61,21 @@ struct GlobalGameData
     GameAudio audio;
     GameData data;
     GameTextures textures;
+    TTF_Font *font;
 
     double deltatime;
     time_t total_time;
     bool running;
+    bool menu;
 
     bool shiel_song;
     bool shiel_song_stop;
-
     bool song_item_p;
     bool song_item_m;
+    bool audio_enable;
+
+    int menu_index;
+    double menu_press;
 
     int score;
     int color_index;
@@ -78,10 +84,11 @@ struct GlobalGameData
 
 static struct GlobalGameData global_data;
 
-void update_detachthread(void *);
+//void update_detachthread(void *);
 void update_mainthread(SDL_Keycode key);
-
 void draw(SDL_Renderer *, GameData, GameTextures);
+
+void menu_mode(SDL_Renderer *renderer, SDL_Keycode key);
 
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render);
 void init_textures(GameTextures *, SDL_Renderer *render);
@@ -89,6 +96,7 @@ void init_audio(GameAudio *);
 
 bool update_boost(bool *is, Vector2 *pos, double *time);
 void song_boost(bool *p, bool *l, bool *im, bool *ip, Mix_Music *sm, Mix_Music *sp);
+void draw_text(const char *text, SDL_Renderer *renderer, Vector2 position, Size size, bool centerX, bool centerY);
 
 int main(int argc, char **argv)
 {
@@ -106,6 +114,8 @@ int main(int argc, char **argv)
     {
         return 1;
     }
+
+    TTF_Init();
 
     if (Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096) == -1)
     {
@@ -143,6 +153,9 @@ int main(int argc, char **argv)
     */
 
     global_data.score = 0;
+    global_data.audio_enable = true;
+    global_data.menu = true;
+
     init_textures(&global_data.textures, renderer);
     init_audio(&global_data.audio);
     init_game(&global_data.data, global_data.textures, renderer);
@@ -167,7 +180,6 @@ int main(int argc, char **argv)
     int frames = 0;
 
     global_data.running = true;
-    global_data.total_time = time(0);
 
     SDL_Event event;
     SDL_Keycode current_key;
@@ -247,19 +259,41 @@ int main(int argc, char **argv)
                 is_press = false;
                 current_key = SDLK_UNKNOWN;
             }
-            if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_RIGHT)
+            if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                global_data.color_index++;
-                if (global_data.color_index >= 4)
+                if (event.button.button == SDL_BUTTON_RIGHT)
                 {
-                    global_data.color_index = 0;
+                    global_data.color_index++;
+                    if (global_data.color_index >= 4)
+                    {
+                        global_data.color_index = 0;
+                    }
+                }
+                else if (event.button.button == SDL_BUTTON_LEFT)
+                {
+                    global_data.audio_enable = !global_data.audio_enable;
                 }
             }
         }
-        update_mainthread(current_key);
-        SDL_RenderClear(renderer);
-        draw(renderer, global_data.data, global_data.textures);
-        SDL_RenderPresent(renderer);
+
+        if (global_data.menu)
+        {
+            SDL_RenderClear(renderer);
+            menu_mode(renderer, current_key);
+            SDL_RenderPresent(renderer);
+        }
+        else
+        {
+            if (global_data.total_time == 0)
+            {
+                global_data.total_time = time(0);
+            }
+
+            update_mainthread(current_key);
+            SDL_RenderClear(renderer);
+            draw(renderer, global_data.data, global_data.textures);
+            SDL_RenderPresent(renderer);
+        }
 
         /*CPU fix*/
         SDL_Delay(1000 / FPS_MAX);
@@ -401,7 +435,11 @@ void update_mainthread(SDL_Keycode key)
                 global_data.data.player.life -= 10;
                 if (global_data.data.player.life <= 0)
                 {
-                    Mix_PlayMusic(global_data.audio.lose, 1);
+                    if (global_data.audio_enable)
+                    {
+                        Mix_PlayMusic(global_data.audio.lose, 1);
+                    }
+
                     printf("\nScore: %d\nTotal time: %lds\nKill: %d\n", global_data.score, time_interval(global_data.total_time), global_data.kill);
                     global_data.running = false;
                     break;
@@ -425,8 +463,10 @@ void update_mainthread(SDL_Keycode key)
             l.size = (Size){LASER_W, LASER_H};
             l.position = (Vector2){global_data.data.player.position.x + (global_data.data.player.size.width - l.size.width) / 2, global_data.data.player.position.y - global_data.data.player.size.height / 2};
             l.speed = LASER_SPEED;
-
-            Mix_PlayMusic(global_data.audio.player_laser, 1);
+            if (global_data.audio_enable)
+            {
+                Mix_PlayMusic(global_data.audio.player_laser, 1);
+            }
             if (global_data.data.player.boost_fire)
             {
 
@@ -459,7 +499,10 @@ void update_mainthread(SDL_Keycode key)
         {
             global_data.shiel_song = true;
             global_data.shiel_song_stop = false;
-            Mix_PlayMusic(global_data.audio.player_shield, 3);
+            if (global_data.audio_enable)
+            {
+                Mix_PlayMusic(global_data.audio.player_shield, 3);
+            }
         }
         else if (!global_data.data.player.boost_resistence)
         {
@@ -467,7 +510,10 @@ void update_mainthread(SDL_Keycode key)
 
             if (!global_data.shiel_song_stop && last_resistence != global_data.data.player.boost_resistence)
             {
-                Mix_PlayMusic(global_data.audio.player_shield_stop, 3);
+                if (global_data.audio_enable)
+                {
+                    Mix_PlayMusic(global_data.audio.player_shield_stop, 3);
+                }
                 global_data.shiel_song_stop = true;
             }
         }
@@ -508,8 +554,10 @@ void update_mainthread(SDL_Keycode key)
                 l.speed = LASER_SPEED;
                 l.size = (Size){LASER_W, LASER_H};
                 l.position = (Vector2){global_data.data.enemies[i].position.x + (global_data.data.enemies[i].size.width / 2) + l.size.width, global_data.data.enemies[i].position.y + global_data.data.enemies[i].size.height / 2};
-
-                Mix_PlayMusic(global_data.audio.enemies_laser, 1);
+                if (global_data.audio_enable)
+                {
+                    Mix_PlayMusic(global_data.audio.enemies_laser, 1);
+                }
                 laser_add(&global_data.data.enemies[i].bullet, l, &global_data.data.enemies[i].bullet_len);
             }
 
@@ -791,7 +839,10 @@ void song_boost(bool *p, bool *l, bool *im, bool *ip, Mix_Music *sm, Mix_Music *
     {
         (*ip) = true;
         (*im) = false;
-        Mix_PlayMusic(sp, 2);
+        if (global_data.audio_enable)
+        {
+            Mix_PlayMusic(sp, 2);
+        }
     }
     else if (!(*p))
     {
@@ -799,7 +850,10 @@ void song_boost(bool *p, bool *l, bool *im, bool *ip, Mix_Music *sm, Mix_Music *
 
         if (!(*im) && (*l) != (*p))
         {
-            Mix_PlayMusic(sm, 2);
+            if (global_data.audio_enable)
+            {
+                Mix_PlayMusic(sm, 2);
+            }
             (*im) = true;
         }
     }
@@ -836,4 +890,100 @@ bool update_boost(bool *is, Vector2 *pos, double *time)
     }
 
     return false;
+}
+
+void menu_mode(SDL_Renderer *renderer, SDL_Keycode key)
+{
+    global_data.font = TTF_OpenFont("./out/assets/font.ttf", 40);
+    draw_text("space shooter", renderer, (Vector2){0, 30}, (Size){-1, 10}, true, false);
+
+    global_data.font = TTF_OpenFont("./out/assets/font.ttf", 12);
+    draw_text("press space to start", renderer, (Vector2){0, WINDOW_SIZE - 200}, (Size){-1, 10}, true, false);
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        if (i == global_data.menu_index)
+        {
+            draw_from_texture(renderer, global_data.textures.ui[10], (Vector2){(((WINDOW_SIZE / 5) * (1 + i)) - 50) - 10, (WINDOW_SIZE - 200) / 2 - 10}, (Size){0, 0});
+        }
+        draw_from_texture(renderer, global_data.textures.player[i * 4 + global_data.color_index], (Vector2){((WINDOW_SIZE / 5) * (1 + i)) - 50, (WINDOW_SIZE - 200) / 2}, (Size){200, 200});
+    }
+
+    if (key == SDLK_RIGHT)
+    {
+        global_data.menu_press += global_data.deltatime * 10;
+        if (global_data.menu_press > 10)
+        {
+            global_data.menu_press = 0;
+            global_data.menu_index++;
+        }
+    }
+    else if (key == SDLK_LEFT)
+    {
+        global_data.menu_press += global_data.deltatime * 10;
+        if (global_data.menu_press > 10)
+        {
+            global_data.menu_press = 0;
+            global_data.menu_index--;
+        }
+    }
+
+    if (global_data.menu_index < 0)
+    {
+        global_data.menu_index = 3;
+    }
+    else if (global_data.menu_index > 3)
+    {
+        global_data.menu_index = 0;
+    }
+
+    if (key == SDLK_UNKNOWN)
+    {
+        global_data.menu_press = 0;
+    }
+
+    if (key == SDLK_SPACE)
+    {
+        global_data.data.player.texture = global_data.menu_index*4;
+        global_data.menu = false;
+    }
+}
+
+void draw_text(const char *text, SDL_Renderer *renderer, Vector2 position, Size size, bool centerX, bool centerY)
+{
+    SDL_Color textBackgroundColor = {0x00, 0x00, 0x00, 0xFF};
+    SDL_Color textColor = {0xFF, 0xFF, 0xFF, 0xFF};
+
+    SDL_Surface *textSurface = TTF_RenderText_Shaded(global_data.font, text, textColor, textBackgroundColor);
+
+    if (textSurface)
+    {
+        SDL_Texture *text = SDL_CreateTextureFromSurface(renderer, textSurface);
+        if (text)
+        {
+            if (centerX)
+            {
+                position.x = (WINDOW_SIZE - textSurface->w) / 2;
+            }
+
+            if (centerY)
+            {
+                position.y = (WINDOW_SIZE - textSurface->h) / 2;
+            }
+
+            if (size.width == -1)
+            {
+                size.width = textSurface->w;
+            }
+            if (size.height == -1)
+            {
+                size.height = textSurface->h;
+            }
+
+            draw_from_texture(renderer, text, position, size);
+            SDL_DestroyTexture(text);
+        }
+
+        SDL_FreeSurface(textSurface);
+    }
 }

@@ -1,5 +1,8 @@
 {
     "C_Cpp.default.includePath": [
         "/usr/include/SDL2"
-    ]
+    ],
+    "files.associations": {
+        "sdl_ttf.h": "c"
+    }
 }
