@@ -59,6 +59,7 @@ typedef struct Player
     double speed;
     double time;
     int texture;
+    int damage;
     Size size;
     Vector2 position;
     Laser *bullet;
@@ -71,6 +72,10 @@ typedef struct Player
     double boost_fire_time;
     bool boost_fire;
     Vector2 fire_pos;
+
+    double boost_damage_time;
+    bool boost_damage;
+    Vector2 damage_pos;
 } Player;
 
 typedef struct Meteor
@@ -97,22 +102,30 @@ void add_boost_time(Player *player, double *time, float deltatime);
 
 void add_boost_time(Player *player, double *time, float deltatime)
 {
-    if (!player->boost_resistence && !player->boost_fire && player->fire_pos.y == -BOOST_SIZE && player->resistence_pos.y == -BOOST_SIZE)
+    if (!player->boost_resistence && !player->boost_fire && player->fire_pos.y == -BOOST_SIZE && player->resistence_pos.y == -BOOST_SIZE && player->damage_pos.y == -BOOST_SIZE && !player->boost_damage)
     {
 
         (*time) += deltatime * 10;
         if ((*time) > BOOST_TIME)
         {
             (*time) = 0;
-            if (rand() % (2 + 1 - 1) + 1 == 2)
+            int rnd = rand() % (3 + 1 - 1) + 1;
+            
+            player->fire_pos = (Vector2){0, -BOOST_SIZE};
+            player->damage_pos = (Vector2){0, -BOOST_SIZE};
+            player->resistence_pos = (Vector2){0, -BOOST_SIZE};
+
+            if (rnd == 2)
             {
                 player->fire_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
-                player->resistence_pos = (Vector2){0, -BOOST_SIZE};
             }
-            else
+            else if (rnd == 3)
             {
                 player->resistence_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
-                player->fire_pos = (Vector2){0, -BOOST_SIZE};
+            }
+            else if (rnd == 1)
+            {
+                player->damage_pos = (Vector2){rand() % (WINDOW_SIZE - BOOST_SIZE), 0};
             }
         }
     }

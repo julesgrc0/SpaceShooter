@@ -58,9 +58,13 @@ static struct GlobalGameData global_data;
 
 void update_detachthread(void *);
 void update_mainthread(SDL_Keycode key);
+
 void draw(SDL_Renderer *, GameData, GameTextures);
+
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render);
 void init_textures(GameTextures *, SDL_Renderer *render);
+
+bool update_boost(bool *is, Vector2 *pos, double *time);
 
 int main(int argc, char **argv)
 {
@@ -72,6 +76,7 @@ int main(int argc, char **argv)
     {
         PLAYER_DEFAULT = atoi(argv[2]) - 1;
     }
+
 
     if (SDL_Init(SDL_INIT_VIDEO))
     {
@@ -286,6 +291,8 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
 
     draw_from_texture(render, textures.bonus[1], data.player.fire_pos, (Size){BOOST_SIZE, BOOST_SIZE});
     draw_from_texture(render, textures.bonus[0], data.player.resistence_pos, (Size){BOOST_SIZE, BOOST_SIZE});
+    draw_from_texture(render, textures.bonus[14], data.player.damage_pos, (Size){BOOST_SIZE, BOOST_SIZE});
+
     global_data.data.player.time += global_data.deltatime;
 
     draw_number(textures.ui, render, data.player.life, (Vector2){0, WINDOW_SIZE - 20}, (Size){25, 50});
@@ -298,6 +305,10 @@ void draw(SDL_Renderer *render, GameData data, GameTextures textures)
     else if (data.player.boost_fire)
     {
         draw_from_texture(render, textures.bonus[2], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
+    }
+    else if (data.player.boost_damage)
+    {
+        draw_from_texture(render, textures.bonus[13], (Vector2){WINDOW_SIZE - 50, WINDOW_SIZE - 50}, (Size){50, 50});
     }
 
     draw_success(render, textures);
@@ -317,7 +328,7 @@ void update_mainthread(SDL_Keycode key)
                 {
                     remove_laser(&global_data.data.player.bullet, &global_data.data.player.bullet_len, &i);
 
-                    global_data.data.enemies[k].life -= 10;
+                    global_data.data.enemies[k].life -= global_data.data.player.damage;
                     if (global_data.data.enemies[k].life <= 0)
                     {
                         global_data.score += SCORE_VALUE * global_data.data.enemies[k].speed;
@@ -380,55 +391,22 @@ void update_mainthread(SDL_Keycode key)
     }
 
     add_boost_time(&global_data.data.player, &global_data.data.boost_time, global_data.deltatime);
-    if (global_data.data.player.boost_fire && global_data.data.player.fire_pos.y == -BOOST_SIZE)
-    {
-        global_data.data.player.boost_fire_time += global_data.deltatime * 10;
-        if (global_data.data.player.boost_fire_time > BOOST_DURATION)
-        {
-            global_data.data.player.boost_fire = false;
-            global_data.data.player.boost_fire_time = 0;
-        }
-    }
-    else if (global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y == -BOOST_SIZE)
-    {
-        global_data.data.player.boost_resistence_time += global_data.deltatime * 10;
-        if (global_data.data.player.boost_resistence_time > BOOST_DURATION)
-        {
-            global_data.data.player.boost_resistence = false;
-            global_data.data.player.boost_resistence_time = 0;
-        }
-    }
 
-    if (!global_data.data.player.boost_fire && global_data.data.player.fire_pos.y != -BOOST_SIZE)
+    if (update_boost(&global_data.data.player.boost_fire, &global_data.data.player.fire_pos, &global_data.data.player.boost_fire_time))
     {
-        global_data.data.player.fire_pos.y += global_data.deltatime * BOOST_SPEED;
-        if (AABB(global_data.data.player.fire_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
-        {
-            global_data.data.player.boost_fire = true;
-            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_fire_time = 0;
-        }
-        if (global_data.data.player.fire_pos.y > WINDOW_SIZE)
-        {
-            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_fire = false;
-            global_data.data.player.boost_fire_time = 0;
-        }
     }
-    else if (!global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y != -BOOST_SIZE)
+    else if (update_boost(&global_data.data.player.boost_resistence, &global_data.data.player.resistence_pos, &global_data.data.player.boost_resistence_time))
     {
-        global_data.data.player.resistence_pos.y += global_data.deltatime * BOOST_SPEED;
-        if (AABB(global_data.data.player.resistence_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
+    }
+    else if (update_boost(&global_data.data.player.boost_damage, &global_data.data.player.damage_pos, &global_data.data.player.boost_damage_time))
+    {
+        if (global_data.data.player.damage == 10)
         {
-            global_data.data.player.boost_resistence = true;
-            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_resistence_time = 0;
+            global_data.data.player.damage = 20;
         }
-        if (global_data.data.player.resistence_pos.y > WINDOW_SIZE)
+        else
         {
-            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
-            global_data.data.player.boost_resistence = false;
-            global_data.data.player.boost_resistence_time = 0;
+            global_data.data.player.damage = 10;
         }
     }
 
@@ -471,6 +449,7 @@ void update_mainthread(SDL_Keycode key)
     }
 }
 
+/*
 void update_detachthread(void *n)
 {
     SDL_Keycode current_key;
@@ -544,7 +523,6 @@ void update_detachthread(void *n)
             player_after_move(&global_data.data.player, !global_data.data.player.left, global_data.deltatime);
         }
 
-        //  Segmentation fault (core dumped)
         for (size_t i = 0; i < global_data.data.player.bullet_len; i++)
         {
             Laser laser = global_data.data.player.bullet[i];
@@ -563,7 +541,6 @@ void update_detachthread(void *n)
                 }
             }
         }
-        //
 
         if (last_delta != global_data.deltatime)
         {
@@ -612,6 +589,7 @@ void update_detachthread(void *n)
 
     pthread_exit(0);
 }
+*/
 
 void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position, Size size)
 {
@@ -685,10 +663,13 @@ void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
     p.texture = PLAYER_DEFAULT * 4;
     p.size.width = 100;
     p.size.height = 100;
+    p.damage = 10;
     p.speed = PLAYER_SPEED;
     p.life = 100;
     p.fire_pos = (Vector2){0, -BOOST_SIZE};
     p.resistence_pos = (Vector2){0, -BOOST_SIZE};
+    p.damage_pos = (Vector2){0, -BOOST_SIZE};
+    p.boost_damage = false;
     p.boost_resistence = false;
     p.boost_fire = false;
     p.boost_fire_time = 0;
@@ -715,3 +696,90 @@ void init_textures(GameTextures *textures, SDL_Renderer *render)
     load_directory_textures("./out/assets/background", &textures->background, render);
     load_directory_textures("./out/assets/bonus", &textures->bonus, render);
 }
+
+bool update_boost(bool *is, Vector2 *pos, double *time)
+{
+    if ((*is) && (*pos).y == -BOOST_SIZE)
+    {
+        (*time) += global_data.deltatime * 10;
+        if ((*time) > BOOST_DURATION)
+        {
+            (*is) = false;
+            (*time) = 0;
+        }
+        return true;
+    }
+    if (!(*is) && (*pos).y != -BOOST_SIZE)
+    {
+        (*pos).y += global_data.deltatime * BOOST_SPEED;
+        if (AABB((*pos), (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
+        {
+            (*is) = true;
+            (*pos) = (Vector2){0, -BOOST_SIZE};
+            (*time) = 0;
+        }
+        if ((*pos).y > WINDOW_SIZE)
+        {
+            (*pos) = (Vector2){0, -BOOST_SIZE};
+            (*is) = false;
+            (*time) = 0;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+/*
+ if (global_data.data.player.boost_fire && global_data.data.player.fire_pos.y == -BOOST_SIZE)
+    {
+        global_data.data.player.boost_fire_time += global_data.deltatime * 10;
+        if (global_data.data.player.boost_fire_time > BOOST_DURATION)
+        {
+            global_data.data.player.boost_fire = false;
+            global_data.data.player.boost_fire_time = 0;
+        }
+    }
+    else if (global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y == -BOOST_SIZE)
+    {
+        global_data.data.player.boost_resistence_time += global_data.deltatime * 10;
+        if (global_data.data.player.boost_resistence_time > BOOST_DURATION)
+        {
+            global_data.data.player.boost_resistence = false;
+            global_data.data.player.boost_resistence_time = 0;
+        }
+    }
+
+    if (!global_data.data.player.boost_fire && global_data.data.player.fire_pos.y != -BOOST_SIZE)
+    {
+        global_data.data.player.fire_pos.y += global_data.deltatime * BOOST_SPEED;
+        if (AABB(global_data.data.player.fire_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
+        {
+            global_data.data.player.boost_fire = true;
+            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_fire_time = 0;
+        }
+        if (global_data.data.player.fire_pos.y > WINDOW_SIZE)
+        {
+            global_data.data.player.fire_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_fire = false;
+            global_data.data.player.boost_fire_time = 0;
+        }
+    }
+    else if (!global_data.data.player.boost_resistence && global_data.data.player.resistence_pos.y != -BOOST_SIZE)
+    {
+        global_data.data.player.resistence_pos.y += global_data.deltatime * BOOST_SPEED;
+        if (AABB(global_data.data.player.resistence_pos, (Size){BOOST_SIZE, BOOST_SIZE}, global_data.data.player.position, global_data.data.player.size))
+        {
+            global_data.data.player.boost_resistence = true;
+            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_resistence_time = 0;
+        }
+        if (global_data.data.player.resistence_pos.y > WINDOW_SIZE)
+        {
+            global_data.data.player.resistence_pos = (Vector2){0, -BOOST_SIZE};
+            global_data.data.player.boost_resistence = false;
+            global_data.data.player.boost_resistence_time = 0;
+        }
+    }
+ */
