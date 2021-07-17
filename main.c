@@ -749,15 +749,15 @@ void draw_number(SDL_Texture **ui, SDL_Renderer *render, int n, Vector2 position
 
 void draw_success(SDL_Renderer *render, GameTextures textures)
 {
-    if (global_data.score > 10000)
+    if (global_data.score >= 10000)
     {
         draw_from_texture(render, textures.bonus[7], (Vector2){WINDOW_SIZE - 50, 0}, (Size){50, 50});
     }
-    if (global_data.score > 20000)
+    if (global_data.score >= 20000)
     {
         draw_from_texture(render, textures.bonus[9], (Vector2){WINDOW_SIZE - 100, 0}, (Size){50, 50});
     }
-    if (global_data.score > 30000)
+    if (global_data.score >= 30000)
     {
         draw_from_texture(render, textures.bonus[8], (Vector2){WINDOW_SIZE - 150, 0}, (Size){50, 50});
     }
@@ -803,7 +803,7 @@ void draw_resistence(SDL_Renderer *render, GameTextures textures)
 void draw_gameover_success(SDL_Renderer *render, GameTextures textures)
 {
     time_t diff = global_data.stop_time - global_data.total_time;
-    int x = WINDOW_SIZE / 2 + 50;
+    int x = WINDOW_SIZE / 2 + 75;
     int y = WINDOW_SIZE / 2 + 50;
     if (global_data.data.player.life <= 50 && diff > 60)
     {
@@ -833,15 +833,16 @@ void draw_gameover_success(SDL_Renderer *render, GameTextures textures)
     {
         draw_from_texture(render, textures.bonus[12], (Vector2){x - 150, y + 100}, (Size){50, 50});
     }
-    if (global_data.score > 10000)
+
+    if (global_data.score >= 10000)
     {
         draw_from_texture(render, textures.bonus[7], (Vector2){x - 50, y + 0}, (Size){50, 50});
     }
-    if (global_data.score > 20000)
+    if (global_data.score >= 20000)
     {
         draw_from_texture(render, textures.bonus[9], (Vector2){x - 100, y + 0}, (Size){50, 50});
     }
-    if (global_data.score > 30000)
+    if (global_data.score >= 30000)
     {
         draw_from_texture(render, textures.bonus[8], (Vector2){x - 150, y + 0}, (Size){50, 50});
     }
@@ -1062,7 +1063,7 @@ void menu_mode(SDL_Renderer *renderer, SDL_Keycode key)
 
         draw_gameover_success(renderer, global_data.textures);
 
-        if (key == SDLK_SPACE)
+        if (key == SDLK_UP)
         {
             global_data.running = false;
         }
