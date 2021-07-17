@@ -61,12 +61,14 @@ struct GlobalGameData
     GameAudio audio;
     GameData data;
     GameTextures textures;
-    TTF_Font *font;
+
+    TTF_Font *font40;
+    TTF_Font *font12;
 
     double deltatime;
     time_t total_time;
+    time_t stop_time;
     bool running;
-    bool menu;
 
     bool shiel_song;
     bool shiel_song_stop;
@@ -74,8 +76,12 @@ struct GlobalGameData
     bool song_item_m;
     bool audio_enable;
 
+    bool menu;
+    int menu_state;
     int menu_index;
     double menu_press;
+    double menu_start_time;
+    int menu_start_index;
 
     int score;
     int color_index;
@@ -96,7 +102,7 @@ void init_audio(GameAudio *);
 
 bool update_boost(bool *is, Vector2 *pos, double *time);
 void song_boost(bool *p, bool *l, bool *im, bool *ip, Mix_Music *sm, Mix_Music *sp);
-void draw_text(const char *text, SDL_Renderer *renderer, Vector2 position, Size size, bool centerX, bool centerY);
+void draw_text(const char *text, SDL_Renderer *renderer, TTF_Font *font, Vector2 position, Size size, bool centerX, bool centerY);
 
 int main(int argc, char **argv)
 {
@@ -152,6 +158,8 @@ int main(int argc, char **argv)
     SDL_SetHint(SDL_HINT_EVENT_LOGGING, "2");
     */
 
+    global_data.menu_start_index = 4;
+    global_data.menu_start_time = 0;
     global_data.score = 0;
     global_data.audio_enable = true;
     global_data.menu = true;
@@ -159,6 +167,11 @@ int main(int argc, char **argv)
     init_textures(&global_data.textures, renderer);
     init_audio(&global_data.audio);
     init_game(&global_data.data, global_data.textures, renderer);
+
+    global_data.font12 = TTF_OpenFont("./out/assets/font.ttf", 28);
+    global_data.font40 = TTF_OpenFont("./out/assets/font.ttf", 60);
+
+    SDL_SetWindowIcon(window, SDL_LoadBMP("./out/assets/bonus/bonus-96.bmp"));
 
     /*
     pthread_t update_thread;
@@ -233,8 +246,11 @@ int main(int argc, char **argv)
 
         if ((counter_current - counter_start) >= 1)
         {
+            /*
             printf("\rFPS: %d Deltatime: %f Time: %d", frames, deltatime, time_interval(global_data.total_time));
             fflush(stdout);
+            */
+
             char *title = malloc(sizeof(char) * int_length(frames));
             sprintf(title, "Space Shooter - %d FPS", frames);
             SDL_SetWindowTitle(window, title);
@@ -440,8 +456,11 @@ void update_mainthread(SDL_Keycode key)
                         Mix_PlayMusic(global_data.audio.lose, 1);
                     }
 
-                    printf("\nScore: %d\nTotal time: %lds\nKill: %d\n", global_data.score, time_interval(global_data.total_time), global_data.kill);
-                    global_data.running = false;
+                    //printf("\nScore: %d\nTotal time: %lds\nKill: %d\n", global_data.score, time_interval(global_data.total_time), global_data.kill);
+                    global_data.menu = true;
+                    global_data.menu_state = 2;
+                    global_data.stop_time = time(0);
+
                     break;
                 }
             }
@@ -781,6 +800,53 @@ void draw_resistence(SDL_Renderer *render, GameTextures textures)
     }
 }
 
+void draw_gameover_success(SDL_Renderer *render, GameTextures textures)
+{
+    time_t diff = global_data.stop_time - global_data.total_time;
+    int x = WINDOW_SIZE / 2 + 50;
+    int y = WINDOW_SIZE / 2 + 50;
+    if (global_data.data.player.life <= 50 && diff > 60)
+    {
+        draw_from_texture(render, textures.bonus[4], (Vector2){x - 50, y + 55}, (Size){50, 50});
+    }
+
+    if (global_data.data.player.life <= 30 && diff > 60 * 2)
+    {
+        draw_from_texture(render, textures.bonus[6], (Vector2){x - 100, y + 55}, (Size){50, 50});
+    }
+
+    if (global_data.data.player.life <= 10 && diff > 60 * 3)
+    {
+        draw_from_texture(render, textures.bonus[5], (Vector2){x - 150, y + 55}, (Size){50, 50});
+    }
+    if (global_data.kill >= 10)
+    {
+        draw_from_texture(render, textures.bonus[11], (Vector2){x - 50, y + 100}, (Size){50, 50});
+    }
+
+    if (global_data.kill >= 20)
+    {
+        draw_from_texture(render, textures.bonus[10], (Vector2){x - 100, y + 100}, (Size){50, 50});
+    }
+
+    if (global_data.kill >= 40)
+    {
+        draw_from_texture(render, textures.bonus[12], (Vector2){x - 150, y + 100}, (Size){50, 50});
+    }
+    if (global_data.score > 10000)
+    {
+        draw_from_texture(render, textures.bonus[7], (Vector2){x - 50, y + 0}, (Size){50, 50});
+    }
+    if (global_data.score > 20000)
+    {
+        draw_from_texture(render, textures.bonus[9], (Vector2){x - 100, y + 0}, (Size){50, 50});
+    }
+    if (global_data.score > 30000)
+    {
+        draw_from_texture(render, textures.bonus[8], (Vector2){x - 150, y + 0}, (Size){50, 50});
+    }
+}
+
 void init_game(GameData *data, GameTextures textures, SDL_Renderer *render)
 {
     Player p;
@@ -894,67 +960,121 @@ bool update_boost(bool *is, Vector2 *pos, double *time)
 
 void menu_mode(SDL_Renderer *renderer, SDL_Keycode key)
 {
-    global_data.font = TTF_OpenFont("./out/assets/font.ttf", 40);
-    draw_text("space shooter", renderer, (Vector2){0, 30}, (Size){-1, 10}, true, false);
-
-    global_data.font = TTF_OpenFont("./out/assets/font.ttf", 12);
-    draw_text("press space to start", renderer, (Vector2){0, WINDOW_SIZE - 200}, (Size){-1, 10}, true, false);
-
-    for (size_t i = 0; i < 4; i++)
+    if (global_data.menu_state == 0)
     {
-        if (i == global_data.menu_index)
+        draw_text("Space Shooter", renderer, global_data.font40, (Vector2){0, 30}, (Size){-1, 10}, true, false);
+        draw_text("press space to start", renderer, global_data.font12, (Vector2){0, WINDOW_SIZE - 200}, (Size){-1, 10}, true, false);
+
+        for (size_t i = 0; i < 4; i++)
         {
-            draw_from_texture(renderer, global_data.textures.ui[10], (Vector2){(((WINDOW_SIZE / 5) * (1 + i)) - 50) - 10, (WINDOW_SIZE - 200) / 2 - 10}, (Size){0, 0});
+            if (i == global_data.menu_index)
+            {
+                draw_from_texture(renderer, global_data.textures.ui[10], (Vector2){(((WINDOW_SIZE / 5) * (1 + i)) - 50) - 10, (WINDOW_SIZE - 200) / 2 - 10}, (Size){0, 0});
+            }
+            draw_from_texture(renderer, global_data.textures.player[i * 4 + global_data.color_index], (Vector2){((WINDOW_SIZE / 5) * (1 + i)) - 50, (WINDOW_SIZE - 200) / 2}, (Size){200, 200});
         }
-        draw_from_texture(renderer, global_data.textures.player[i * 4 + global_data.color_index], (Vector2){((WINDOW_SIZE / 5) * (1 + i)) - 50, (WINDOW_SIZE - 200) / 2}, (Size){200, 200});
-    }
 
-    if (key == SDLK_RIGHT)
-    {
-        global_data.menu_press += global_data.deltatime * 10;
-        if (global_data.menu_press > 10)
+        if (key == SDLK_RIGHT)
+        {
+            global_data.menu_press += global_data.deltatime * 10;
+            if (global_data.menu_press > 10)
+            {
+                global_data.menu_press = 0;
+                global_data.menu_index++;
+            }
+        }
+        else if (key == SDLK_LEFT)
+        {
+            global_data.menu_press += global_data.deltatime * 10;
+            if (global_data.menu_press > 10)
+            {
+                global_data.menu_press = 0;
+                global_data.menu_index--;
+            }
+        }
+
+        if (global_data.menu_index < 0)
+        {
+            global_data.menu_index = 3;
+        }
+        else if (global_data.menu_index > 3)
+        {
+            global_data.menu_index = 0;
+        }
+
+        if (key == SDLK_UNKNOWN)
         {
             global_data.menu_press = 0;
-            global_data.menu_index++;
         }
-    }
-    else if (key == SDLK_LEFT)
-    {
-        global_data.menu_press += global_data.deltatime * 10;
-        if (global_data.menu_press > 10)
+
+        if (key == SDLK_SPACE)
         {
-            global_data.menu_press = 0;
-            global_data.menu_index--;
+            global_data.data.player.texture = global_data.menu_index * 4;
+            global_data.menu_state = 1;
         }
     }
+    else if (global_data.menu_state == 1)
+    {
+        global_data.menu_start_time += global_data.deltatime * 10;
 
-    if (global_data.menu_index < 0)
-    {
-        global_data.menu_index = 3;
-    }
-    else if (global_data.menu_index > 3)
-    {
-        global_data.menu_index = 0;
-    }
+        if (global_data.menu_start_time > 100)
+        {
+            global_data.menu_start_index--;
+            global_data.menu_start_time = 0;
+            if (global_data.menu_start_index <= 0)
+            {
+                global_data.menu_start_index = 0;
+                global_data.menu = false;
+            }
+        }
 
-    if (key == SDLK_UNKNOWN)
-    {
-        global_data.menu_press = 0;
+        if (global_data.menu_start_index == 4)
+        {
+            draw_text("READY", renderer, global_data.font40, (Vector2){0, 0}, (Size){-1, -1}, true, true);
+        }
+        else
+        {
+            char *num = malloc(sizeof(char) * 5);
+            sprintf(num, "%d", global_data.menu_start_index);
+            draw_text(num, renderer, global_data.font40, (Vector2){0, 0}, (Size){-1, -1}, true, true);
+            free(num);
+        }
     }
-
-    if (key == SDLK_SPACE)
+    else if (global_data.menu_state == 2)
     {
-        global_data.data.player.texture = global_data.menu_index*4;
-        global_data.menu = false;
+        draw_text("Game Over", renderer, global_data.font40, (Vector2){0, 50}, (Size){-1, -1}, true, false);
+
+        char *str_score = malloc(sizeof(char) * 100);
+        char *str_kill = malloc(sizeof(char) * 10);
+        char *str_time = malloc(sizeof(char) * 10);
+
+        sprintf(str_score, "Score %d", global_data.score);
+        sprintf(str_kill, "Kill %d", global_data.kill);
+        sprintf(str_time, "Time %lds", global_data.stop_time - global_data.total_time);
+
+        draw_text(str_score, renderer, global_data.font12, (Vector2){0, (WINDOW_SIZE / 2) - 100}, (Size){-1, -1}, true, false);
+        draw_text(str_kill, renderer, global_data.font12, (Vector2){0, (WINDOW_SIZE / 2) - 50}, (Size){-1, -1}, true, false);
+        draw_text(str_time, renderer, global_data.font12, (Vector2){0, (WINDOW_SIZE / 2)}, (Size){-1, -1}, true, false);
+
+        free(str_score);
+        free(str_kill);
+        free(str_time);
+
+        draw_gameover_success(renderer, global_data.textures);
+
+        if (key == SDLK_SPACE)
+        {
+            global_data.running = false;
+        }
     }
 }
 
-void draw_text(const char *text, SDL_Renderer *renderer, Vector2 position, Size size, bool centerX, bool centerY)
+void draw_text(const char *text, SDL_Renderer *renderer, TTF_Font *font, Vector2 position, Size size, bool centerX, bool centerY)
 {
     SDL_Color textBackgroundColor = {0x00, 0x00, 0x00, 0xFF};
     SDL_Color textColor = {0xFF, 0xFF, 0xFF, 0xFF};
 
-    SDL_Surface *textSurface = TTF_RenderText_Shaded(global_data.font, text, textColor, textBackgroundColor);
+    SDL_Surface *textSurface = TTF_RenderText_Shaded(font, text, textColor, textBackgroundColor);
 
     if (textSurface)
     {
